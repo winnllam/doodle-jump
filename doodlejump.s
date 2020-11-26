@@ -45,6 +45,15 @@ backgroundColour:	.word	0xc2e6ec 	# blue
 doodleColour:		.word	0x745185 	# purple
 platformColour:		.word	0xd0f0c0	# green
 
+# Controls (ASCII numbers)
+direction:	.word 0
+left:		.word 74	# j
+right:		.word 75	# k
+
+# Objects
+platformLength:	.word 5
+
+
 .text
 main:
 ### Fill background
@@ -59,6 +68,35 @@ backgroundFill:
 	add $t1, $t1, 4 	# increment to next pixel
 	addi $t0, $t0, 1
 	bne $t0, $a0, backgroundFill	# 1024
+	
+
+### Draw platforms
+initPlatforms:
+	li $v0, 42		# RNG for platform locations
+	li $a0, 0		# number stored into $a0
+	li $a1, 1024		# 1024/4
+	syscall
+	
+	lw $a3, platformLength
+	lw $t4, platformColour
+
+	li $t0, 0 		# loop counter
+	lw $t1, displayAddress	# base address for display
+	
+loadPlatformLocation:
+	li $t5, 4		# multiplier
+	
+	mult $t5, $a0		# RNG * 4 (so multiple of 4)
+	mflo $a1
+	
+	add $t1, $t1, $a1	# load rng location
+
+drawPlatform:
+	sw $t4, 0($t1) 			# save platform colour at location
+	add $t1, $t1, 4 		# increment to next pixel horizontal
+	addi $t0, $t0, 1
+	bne $t0, $a3, drawPlatform	# platform length is 5
+
 
 Exit:
 	li $v0, 10 # terminate the program gracefully
