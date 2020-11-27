@@ -43,7 +43,7 @@ displayAddress:	.word	0x10008000
 # Colours
 backgroundColour:	.word	0xc2e6ec 	# blue
 doodleColour:		.word	0x745185 	# purple
-platformColour:		.word	0xd0f0c0	# green
+platformColour:		.word	0x74bea7	# green
 
 # Controls (ASCII numbers)
 direction:	.word 0
@@ -51,7 +51,8 @@ left:		.word 74	# j
 right:		.word 75	# k
 
 # Objects
-platformLength:	.word 5
+platforms:	.space 	26	# 4 * 6
+platformLength:	.word 	5
 
 
 .text
@@ -72,10 +73,19 @@ backgroundFill:
 
 ### Draw platforms
 initPlatforms:
+	la $t9, platforms	# load space for platform array
+	li $t8, 0		# counter for # of platforms
+	li $t7, 0		# offset shifts for platform array
+
+platformPrep:
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
 	li $a1, 1024		# 1024/4
 	syscall
+	
+	add $t6, $t9, $t7
+	sw $a0, 0($t6)		# store into memory (array)
+	addi $t7, $t7, 4	# update platform array offset
 	
 	lw $a3, platformLength
 	lw $t4, platformColour
@@ -96,6 +106,9 @@ drawPlatform:
 	add $t1, $t1, 4 		# increment to next pixel horizontal
 	addi $t0, $t0, 1
 	bne $t0, $a3, drawPlatform	# platform length is 5
+	
+	addi $t8, $t8, 1		# increment to next platform
+	bne $t8, 6, platformPrep	# loop to generate another platform (6 times)
 
 
 Exit:
