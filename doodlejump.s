@@ -125,11 +125,9 @@ drawDoodle:
 	
 	sw $a1, 0($t1)			# draw initial doodle
 
-keyCheck:
+keyCheckInit:
 	lw $t0, 0xffff0000
 	beq $t0, 1, movementKeyPress
-	
-	#jr $ra
 	
 doodleJump:
 	li $t9, 0		# counter for distance up and down
@@ -137,8 +135,7 @@ doodleJump:
 doodleJumpUp:
 	sub $t1, $t1, 128	# up
 	sw $t7, 128($t1)	
-	lw $t7, 0($t1)		# save new colour at location
-	sw $a1, 0($t1)		# load new colour
+	jal moveDoodle
 	
 	addi $t9, $t9, 1
 	
@@ -146,15 +143,14 @@ doodleJumpUp:
 	lw $a0, jumpDelay
 	syscall
 	
-	jal keyCheck2
+	jal keyCheck
 	
 	bne $t9, 6, doodleJumpUp	# continue up
 	
 doodleJumpDown:
 	addi $t1, $t1, 128	# down
 	sw $t7, -128($t1)	
-	lw $t7, 0($t1)		# save new colour at location
-	sw $a1, 0($t1)		# load new colour
+	jal moveDoodle
 	
 	sub $t9, $t9, 1
 	
@@ -162,13 +158,13 @@ doodleJumpDown:
 	lw $a0, jumpDelay
 	syscall
 	
-	jal keyCheck2
+	jal keyCheck		# check for input while movement to continue
 	
 	bne $t9, 0, doodleJumpDown	# continue down	
 		
-	j keyCheck
-	
-keyCheck2:
+	j keyCheckInit
+
+keyCheck:
 	lw $t0, 0xffff0000
 	beq $t0, 1, movementKeyPress
 	
@@ -179,7 +175,7 @@ movementKeyPress:
 	beq $t2, 0x6A, moveDoodleLeft	# j
 	beq $t2, 0x6B, moveDoodleRight	# k
 	
-	j keyCheck		# not a movement key, continue looping
+	j keyCheckInit		# not a movement key, continue looping
 
 moveDoodleLeft:
 	#beq $t1, 0x10008000, movementKeyPress	# hit left border
@@ -195,11 +191,11 @@ moveDoodleRight:
 	add $t1, $t1, 4	
 	sw $t7, -4($t1)	
 
-moveDoodle:			
+moveDoodle:	# colour saving and loading		
 	lw $t7, 0($t1)		# save new colour at location
 	sw $a1, 0($t1)		# load new colour
 	
-	j keyCheck
+	jr $ra
 	
 
 
