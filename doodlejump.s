@@ -39,7 +39,7 @@ screenHeight: 	.word 32	# display width in pixels/unit width in pixels
 pixel:		.word 1024
 
 # Display locations
-displayAddress:	.word	0x10008000
+displayAddress:	.word	0x10008000	# same as $gp
 doodleStart: 	.word	0x10008dc0
 
 # Anmiation delay
@@ -77,8 +77,9 @@ backgroundFill:
 	
 
 ### Draw platforms ###
+# TODO: RNG to sepecific sections of display (only the top one would get a new generated one)
 initPlatforms:
-	la $t9, platforms	# load space for platform array
+	la $s7, platforms	# load space for platform array
 	li $t8, 0		# counter for # of platforms
 	li $t7, 0		# offset shifts for platform array
 
@@ -88,8 +89,8 @@ platformPrep:
 	li $a1, 1024		# 1024/4
 	syscall
 	
-	add $t6, $t9, $t7
-	sw $a0, 0($t6)		# store into memory (array)
+	add $t6, $s7, $t7
+	#sw $a0, 0($t6)		# store into memory (array)
 	addi $t7, $t7, 4	# update platform array offset
 	
 	lw $a3, platformLength
@@ -99,10 +100,12 @@ platformPrep:
 	lw $t1, displayAddress	# base address for display
 	
 loadPlatformLocation:
-	li $t5, 4		# multiplier
+	li $s4, 4		# multiplier
 	
-	mult $t5, $a0		# RNG * 4 (so multiple of 4)
+	mult $s4, $a0		# RNG * 4 (so multiple of 4)
 	mflo $a1
+	
+	sw $a1, 0($t6)		# store into memory (array)
 	
 	add $t1, $t1, $a1	# load rng location
 
@@ -116,7 +119,7 @@ drawPlatform:
 	bne $t8, 6, platformPrep	# loop to generate another platform (6 times)
 
 
-### Draw Doodle ###
+### Draw and move Doodle ###
 drawDoodle:
 	lw $a1, doodleColour
 	lw $t7, backgroundColour	# save colour at current location
@@ -125,11 +128,11 @@ drawDoodle:
 	
 	sw $a1, 0($t1)			# draw initial doodle
 
-keyCheckInit:
+keyCheckInit:	# start of the jumping process
 	lw $t0, 0xffff0000
 	beq $t0, 1, movementKeyPress
 	
-doodleJump:
+doodleJumpInit:
 	li $t9, 0		# counter for distance up and down
 
 doodleJumpUp:
@@ -145,6 +148,8 @@ doodleJumpUp:
 	
 	jal keyCheck
 	
+	jal checkPlatforms
+	
 	bne $t9, 6, doodleJumpUp	# continue up
 	
 doodleJumpDown:
@@ -159,6 +164,8 @@ doodleJumpDown:
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
+	
+	jal checkPlatforms
 	
 	bne $t9, 0, doodleJumpDown	# continue down	
 		
@@ -196,8 +203,56 @@ moveDoodle:	# colour saving and loading
 	sw $a1, 0($t1)		# load new colour
 	
 	jr $ra
-	
 
+
+### Movement to platforms ###
+checkPlatforms:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)		# add pointer to jump up to stack
+
+	la $t4, platforms
+	li $t8, 0		# initialize platform counter
+
+	jal checkOnPlatform
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+checkOnPlatform:
+	lw $t3, 0($t4)		# load platform location
+	add $t3, $t3, $gp	# $gp is same as displayAddress
+	
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	 
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	
+	addi $t4, $t4, 4	# increment offset
+	addi $t8, $t8, 1	# incrememnt platform counter
+	bne $t8, 6, checkOnPlatform 
+	
+	j noPlatform
+	
+onPlatform:
+	li $s6, 1
+	sub $t1, $t1, 128
+	jr $ra
+	
+noPlatform:
+	li $s6, 2
+	jr $ra
+	
+# cross check with the array and the location doodle is at
+# drop down if no base
 
 Exit:
 	li $v0, 10 # terminate the program gracefully
