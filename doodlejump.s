@@ -38,7 +38,12 @@ screenWidth: 	.word 32
 screenHeight: 	.word 32	# display width in pixels/unit width in pixels
 pixel:		.word 1024
 
+# Display locations
 displayAddress:	.word	0x10008000
+doodleStart: 	.word	0x10008dc0
+
+# Anmiation delay
+jumpDelay:	.word	100
 
 # Colours
 backgroundColour:	.word	0xc2e6ec 	# blue
@@ -113,43 +118,89 @@ drawPlatform:
 
 ### Draw Doodle ###
 drawDoodle:
-	lw $a0, pixel			# 1024
 	lw $a1, doodleColour
-	lw $t9, backgroundColour	# save colour at current location
+	lw $t7, backgroundColour	# save colour at current location
 
-	lw $t1, displayAddress	# base address for display
+	lw $t1, doodleStart		# base address for display
 	
-	sw $a1, 0($t1)
+	sw $a1, 0($t1)			# draw initial doodle
 
-movementKeyPress:
+keyCheck:
 	lw $t0, 0xffff0000
-	bne $t0, 1, movementKeyPress
+	beq $t0, 1, movementKeyPress
 	
+	#jr $ra
+	
+doodleJump:
+	li $t9, 0		# counter for distance up and down
+
+doodleJumpUp:
+	sub $t1, $t1, 128	# up
+	sw $t7, 128($t1)	
+	lw $t7, 0($t1)		# save new colour at location
+	sw $a1, 0($t1)		# load new colour
+	
+	addi $t9, $t9, 1
+	
+	li $v0, 32		# sleep to delay animation
+	lw $a0, jumpDelay
+	syscall
+	
+	jal keyCheck2
+	
+	bne $t9, 6, doodleJumpUp	# continue up
+	
+doodleJumpDown:
+	addi $t1, $t1, 128	# down
+	sw $t7, -128($t1)	
+	lw $t7, 0($t1)		# save new colour at location
+	sw $a1, 0($t1)		# load new colour
+	
+	sub $t9, $t9, 1
+	
+	li $v0, 32		# sleep to delay animation
+	lw $a0, jumpDelay
+	syscall
+	
+	jal keyCheck2
+	
+	bne $t9, 0, doodleJumpDown	# continue down	
+		
+	j keyCheck
+	
+keyCheck2:
+	lw $t0, 0xffff0000
+	beq $t0, 1, movementKeyPress
+	
+	jr $ra
+
+movementKeyPress:	
 	lw $t2, 0xffff0004
 	beq $t2, 0x6A, moveDoodleLeft	# j
 	beq $t2, 0x6B, moveDoodleRight	# k
 	
-	j movementKeyPress		# not a movement key, continue looping
+	j keyCheck		# not a movement key, continue looping
 
 moveDoodleLeft:
-	beq $t1, 0x10008000, movementKeyPress	# hit left border
+	#beq $t1, 0x10008000, movementKeyPress	# hit left border
 		
 	sub $t1, $t1, 4		# move left
-	sw $t9, 4($t1)		# load previous colour at current location
+	sw $t7, 4($t1)		# load previous colour at current location
 	
 	j moveDoodle		# skip over moveDoodleRight
 	
 moveDoodleRight:
-	beq $t1, 0x1000807c, movementKeyPress	# hit right border
+	#beq $t1, 0x1000807c, movementKeyPress	# hit right border
 	
 	add $t1, $t1, 4	
-	sw $t9, -4($t1)	
+	sw $t7, -4($t1)	
 
 moveDoodle:			
-	lw $t9, 0($t1)		# save new colour at location
+	lw $t7, 0($t1)		# save new colour at location
 	sw $a1, 0($t1)		# load new colour
 	
-	j movementKeyPress
+	j keyCheck
+	
 
 
 Exit:
