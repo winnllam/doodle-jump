@@ -43,7 +43,7 @@ displayAddress:	.word	0x10008000	# same as $gp
 doodleStart: 	.word	0x10008dc0
 
 # Anmiation delay
-jumpDelay:	.word	100
+jumpDelay:	.word	80
 
 # Colours
 backgroundColour:	.word	0xc2e6ec 	# blue
@@ -56,8 +56,8 @@ left:		.word 74	# j 6A
 right:		.word 75	# k 6B
 
 # Objects
-platforms:	.space 	26	# 4 * 6
-platformLength:	.word 	5
+platforms:	.space 	32	# 4 byte * 8 platforms
+platformLength:	.word 	6
 
 
 .text
@@ -82,15 +82,18 @@ initPlatforms:
 	la $s7, platforms	# load space for platform array
 	li $t8, 0		# counter for # of platforms
 	li $t7, 0		# offset shifts for platform array
+	li $t5, 0		# partition for platform locations
 
 platformPrep:
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
-	li $a1, 1024		# 1024/4
+	li $a1, 128		# 1024/4
 	syscall
 	
+	add $a0, $a0, $t5 	# add section offset for platform
+	addi $t5, $t5, 128
+	
 	add $t6, $s7, $t7
-	#sw $a0, 0($t6)		# store into memory (array)
 	addi $t7, $t7, 4	# update platform array offset
 	
 	lw $a3, platformLength
@@ -101,7 +104,6 @@ platformPrep:
 	
 loadPlatformLocation:
 	li $s4, 4		# multiplier
-	
 	mult $s4, $a0		# RNG * 4 (so multiple of 4)
 	mflo $a1
 	
@@ -116,7 +118,7 @@ drawPlatform:
 	bne $t0, $a3, drawPlatform	# platform length is 5
 	
 	addi $t8, $t8, 1		# increment to next platform
-	bne $t8, 6, platformPrep	# loop to generate another platform (6 times)
+	bne $t8, 8, platformPrep	# loop to generate another platform (8 times)
 
 
 ### Draw and move Doodle ###
@@ -150,7 +152,7 @@ doodleJumpUp:
 	
 	jal checkPlatforms
 	
-	bne $t9, 6, doodleJumpUp	# continue up
+	bne $t9, 10, doodleJumpUp	# continue up
 	
 doodleJumpDown:
 	addi $t1, $t1, 128	# down
@@ -220,39 +222,43 @@ checkPlatforms:
 	
 	jr $ra
 
-checkOnPlatform:
+checkOnPlatformInit:
+	li $t6, 0		# initialize platform length counter
+
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
-	
-	beq $t3, $t1, onPlatform	# check entire length of platform
-	addi $t3, $t3, 4
-	 
-	beq $t3, $t1, onPlatform	# check entire length of platform
-	addi $t3, $t3, 4
+
+checkOnPlatform:
+	# TODO: loop this instead or something better
 	beq $t3, $t1, onPlatform	# check entire length of platform
 	addi $t3, $t3, 4
 	beq $t3, $t1, onPlatform	# check entire length of platform
 	addi $t3, $t3, 4
 	beq $t3, $t1, onPlatform	# check entire length of platform
 	addi $t3, $t3, 4
+	beq $t3, $t1, onPlatform	# check entire length of platform
+	addi $t3, $t3, 4
+	beq $t3, $t1, onPlatform	# check entire length of platform
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t8, $t8, 1	# incrememnt platform counter
-	bne $t8, 6, checkOnPlatform 
+	bne $t8, 8, checkOnPlatformInit 
 	
 	j noPlatform
 	
 onPlatform:
-	li $s6, 1
-	sub $t1, $t1, 128
+	sub $t1, $t1, 128	# jump onto platform
+	
+	lw $t7, backgroundColour
 	jr $ra
 	
 noPlatform:
-	li $s6, 2
+	li $s6, 1
 	jr $ra
 	
 # cross check with the array and the location doodle is at
 # drop down if no base
+# scroll based on where the base of doodle is (if default base changes, scroll) - other than going down
 
 Exit:
 	li $v0, 10 # terminate the program gracefully
