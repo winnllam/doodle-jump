@@ -43,7 +43,7 @@ displayAddress:	.word	0x10008000	# same as $gp
 doodleStart: 	.word	0x10008dc0
 
 # Anmiation delay
-jumpDelay:	.word	80
+jumpDelay:	.word	100
 
 # Colours
 backgroundColour:	.word	0xc2e6ec 	# blue
@@ -322,7 +322,7 @@ platformShiftDown:	# shift platforms down and store
 	li $t6, 0		# initialize platform length counter
 
 	lw $t3, 0($s1)		# load platform location
-	addi $t3, $t3, 256	# shift down
+	addi $t3, $t3, 128	# shift down
 	sw $t3, 0($s1)		# save new value to array
 	
 	addi $s1, $s1, 4	# increment offset to next value in array
@@ -339,6 +339,8 @@ platformShiftRight:	# draw the entire platform
 	
 	addi $t8, $t8, 1		# increment platform counter
 	bne $t8, 8, platformShiftDown	# 8 platforms at a time
+	
+	addi $s0, $s0, 128
 	
 	jr $ra
 
