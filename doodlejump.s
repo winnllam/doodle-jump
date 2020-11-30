@@ -237,7 +237,7 @@ checkPlatforms:
 	la $t4, platforms
 	li $t8, 0		# initialize platform counter
 
-	jal checkOnPlatform
+	jal checkOnPlatformInit
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -245,8 +245,6 @@ checkPlatforms:
 	jr $ra
 
 checkOnPlatformInit:
-	li $t6, 0		# initialize platform length counter
-
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
 
@@ -310,13 +308,30 @@ backdropShiftInit: # recolour the background
 	lw $t1, displayAddress	# base address for display
 	
 backdropShift:
-	#sw $a2, 0($t1) 		# save background colour at location
-	#add $t1, $t1, 4 	# increment to next pixel
-	#addi $t0, $t0, 1
-	#bne $t0, $a0, backdropShift	# 1024
+	sw $a2, 0($t1) 		# save background colour at location
+	add $t1, $t1, 4 	# increment to next pixel
+	addi $t0, $t0, 1
+	bne $t0, $a0, backdropShift	# 1024
 	
-
+platformShiftInit: 	#s1 2 3
+	la $s1, platforms
+	lw $s2, platformColour
+	li $t8, 0		# initialize platform counter
+	li $t6, 0		# initialize platform length counter
+	
 platformShift:
+	lw $t3, 0($s1)			# load platform location
+	addi $t3, $t3, 256		# shift down
+	sw $t3, 0($s1)			# save new value to array
+	
+	li $s3, 0			# reset display location
+	add $s3, $gp, $t3
+	sw $s2, 0($s3)			# colour into display
+	
+	addi $s1, $s1, 4		# increment offset to next value in array
+	
+	addi $t8, $t8, 1		# increment platform counter
+	bne $t8, 8, platformShift	# 8 platforms at a time
 	
 	jr $ra
 
