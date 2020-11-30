@@ -54,6 +54,7 @@ platformColour:		.word	0x74bea7	# green
 direction:	.word 0
 left:		.word 74	# j 6A
 right:		.word 75	# k 6B
+start:		.word 73
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
@@ -119,15 +120,24 @@ drawPlatform:
 	bne $t0, $a3, drawPlatform	# platform length is 5
 	
 	addi $t8, $t8, 1		# increment to next platform
-	bne $t8, 8, platformPrep	# loop to generate another platform (8 times)
+	bne $t8, 7, platformPrep	# loop to generate another platform (7 times)
+	
+	lw $s0, doodleStart		# base address for doodle starting location
+	addi $s0, $s0, 120		# shift down and left 2 (128 - 4 - 4 = 120)
+	li $t0, 0
+	
+drawStartingPlatform:		
+	sw $t4, 0($s0)			# 8th platform initialized to below doodle
+	addi $t0, $t0 1
+	addi $s0, $s0, 4
+	bne $t0, $a3, drawStartingPlatform
 
 ### Draw doodle ###
 drawDoodle:
 	lw $a1, doodleColour
 	lw $t7, backgroundColour	# save colour at current location
 
-	lw $s0, doodleStart		# base address for display
-	
+	lw $s0, doodleStart		# base address for display (reset)
 	sw $a1, 0($s0)			# draw initial doodle
 
 startKeyCheck:
