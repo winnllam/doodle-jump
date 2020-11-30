@@ -79,7 +79,7 @@ backgroundFill:
 	
 
 ### Draw platforms ###
-# TODO: only the top one would get a new generated one
+# TODO: generate new platforms
 initPlatforms:
 	la $s7, platforms	# load space for platform array
 	li $t8, 0		# counter for # of platforms
@@ -247,20 +247,14 @@ checkPlatforms:
 checkOnPlatformInit:
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
+	li $t6, 0		# counter for platform length
 
 checkOnPlatform:
-	# TODO: loop this instead or something better
 	beq $t3, $s0, onPlatform	# check entire length of platform (length of 6)
 	addi $t3, $t3, 4
-	beq $t3, $s0, onPlatform	
-	addi $t3, $t3, 4
-	beq $t3, $s0, onPlatform	
-	addi $t3, $t3, 4
-	beq $t3, $s0, onPlatform	
-	addi $t3, $t3, 4
-	beq $t3, $s0, onPlatform	
-	addi $t3, $t3, 4
-	beq $t3, $s0, onPlatform	
+	
+	addi $t6, $t6, 1		# platform length counter
+	bne $t6, 6, checkOnPlatform	
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t8, $t8, 1	# incrememnt platform counter
@@ -270,8 +264,7 @@ checkOnPlatform:
 	
 onPlatform:
 	addi $sp, $sp, -4 	# save pointer back to checkPlatform
-	sw $ra, 0($sp)		
-	# TODO: trigger shift downward of platforms based on base $t1
+	sw $ra, 0($sp)
 	
 	jal backdropShiftInit
 
@@ -344,11 +337,6 @@ platformShiftRight:	# draw the entire platform
 	
 	jr $ra
 
-	
-	
-# cross check with the array and the location doodle is at
-# drop down if no base
-# scroll based on where the base of doodle is (if default base changes, scroll) - other than going down
 
 Exit:
 	li $v0, 10 # terminate the program gracefully
