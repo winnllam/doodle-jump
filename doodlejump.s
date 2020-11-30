@@ -317,21 +317,28 @@ platformShiftInit: 	#s1 2 3
 	la $s1, platforms
 	lw $s2, platformColour
 	li $t8, 0		# initialize platform counter
+	
+platformShiftDown:	# shift platforms down and store
 	li $t6, 0		# initialize platform length counter
+
+	lw $t3, 0($s1)		# load platform location
+	addi $t3, $t3, 256	# shift down
+	sw $t3, 0($s1)		# save new value to array
 	
-platformShift:
-	lw $t3, 0($s1)			# load platform location
-	addi $t3, $t3, 256		# shift down
-	sw $t3, 0($s1)			# save new value to array
+	addi $s1, $s1, 4	# increment offset to next value in array
 	
-	li $s3, 0			# reset display location
+	li $s3, 0		# reset display location
 	add $s3, $gp, $t3
-	sw $s2, 0($s3)			# colour into display
 	
-	addi $s1, $s1, 4		# increment offset to next value in array
+platformShiftRight:	# draw the entire platform
+	sw $s2, 0($s3)		# colour into display
+	addi $s3, $s3, 4	# offset for rest of platform
+	
+	addi $t6, $t6, 1	# increment platform length counter
+	bne $t6, 6, platformShiftRight
 	
 	addi $t8, $t8, 1		# increment platform counter
-	bne $t8, 8, platformShift	# 8 platforms at a time
+	bne $t8, 8, platformShiftDown	# 8 platforms at a time
 	
 	jr $ra
 
