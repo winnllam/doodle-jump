@@ -61,6 +61,7 @@ platformLength:	.word 	6
 
 
 .text
+### INITIALIZATION START ###
 main:
 ### Fill background ###
 	lw $a0, pixel		# 1024
@@ -77,7 +78,7 @@ backgroundFill:
 	
 
 ### Draw platforms ###
-# TODO: RNG to sepecific sections of display (only the top one would get a new generated one)
+# TODO: only the top one would get a new generated one
 initPlatforms:
 	la $s7, platforms	# load space for platform array
 	li $t8, 0		# counter for # of platforms
@@ -120,16 +121,25 @@ drawPlatform:
 	addi $t8, $t8, 1		# increment to next platform
 	bne $t8, 8, platformPrep	# loop to generate another platform (8 times)
 
-
-### Draw and move Doodle ###
+### Draw doodle ###
 drawDoodle:
 	lw $a1, doodleColour
 	lw $t7, backgroundColour	# save colour at current location
 
-	lw $t1, doodleStart		# base address for display
+	lw $s0, doodleStart		# base address for display
 	
-	sw $a1, 0($t1)			# draw initial doodle
+	sw $a1, 0($s0)			# draw initial doodle
 
+startKeyCheck:
+	lw $t0, 0xffff0000
+	bne $t0, 1, startKeyCheck	# no click? loop
+	
+	lw $t2, 0xffff0004		# s is clicked, start game (s, 73)
+	bne $t2, 0x73, startKeyCheck		
+
+### INITIALIZATION END ###
+
+### Move Doodle ###
 keyCheckInit:	# start of the jumping process
 	lw $t0, 0xffff0000
 	beq $t0, 1, movementKeyPress
@@ -138,8 +148,8 @@ doodleJumpInit:
 	li $t9, 0		# counter for distance up and down
 
 doodleJumpUp:
-	sub $t1, $t1, 128	# up
-	sw $t7, 128($t1)	
+	sub $s0, $s0, 128	# up
+	sw $t7, 128($s0)	
 	jal moveDoodle
 	
 	addi $t9, $t9, 1
@@ -155,8 +165,8 @@ doodleJumpUp:
 	bne $t9, 10, doodleJumpUp	# continue up
 	
 doodleJumpDown:
-	addi $t1, $t1, 128	# down
-	sw $t7, -128($t1)	
+	addi $s0, $s0, 128	# down
+	sw $t7, -128($s0)	
 	jal moveDoodle
 	
 	sub $t9, $t9, 1
@@ -181,6 +191,8 @@ keyCheck:
 
 movementKeyPress:	
 	lw $t2, 0xffff0004
+	beq $t2, 0x73, main	# s for restart
+	
 	beq $t2, 0x6A, moveDoodleLeft	# j
 	beq $t2, 0x6B, moveDoodleRight	# k
 	
@@ -189,20 +201,20 @@ movementKeyPress:
 moveDoodleLeft:
 	#beq $t1, 0x10008000, movementKeyPress	# hit left border
 		
-	sub $t1, $t1, 4		# move left
-	sw $t7, 4($t1)		# load previous colour at current location
+	sub $s0, $s0, 4		# move left
+	sw $t7, 4($s0)		# load previous colour at current location
 	
 	j moveDoodle		# skip over moveDoodleRight
 	
 moveDoodleRight:
 	#beq $t1, 0x1000807c, movementKeyPress	# hit right border
 	
-	add $t1, $t1, 4	
-	sw $t7, -4($t1)	
+	add $s0, $s0, 4	
+	sw $t7, -4($s0)	
 
 moveDoodle:	# colour saving and loading		
-	lw $t7, 0($t1)		# save new colour at location
-	sw $a1, 0($t1)		# load new colour
+	lw $t7, 0($s0)		# save new colour at location
+	sw $a1, 0($s0)		# load new colour
 	
 	jr $ra
 
@@ -230,15 +242,17 @@ checkOnPlatformInit:
 
 checkOnPlatform:
 	# TODO: loop this instead or something better
-	beq $t3, $t1, onPlatform	# check entire length of platform
+	beq $t3, $s0, onPlatform	# check entire length of platform (length of 6)
 	addi $t3, $t3, 4
-	beq $t3, $t1, onPlatform	# check entire length of platform
+	beq $t3, $s0, onPlatform	
 	addi $t3, $t3, 4
-	beq $t3, $t1, onPlatform	# check entire length of platform
+	beq $t3, $s0, onPlatform	
 	addi $t3, $t3, 4
-	beq $t3, $t1, onPlatform	# check entire length of platform
+	beq $t3, $s0, onPlatform	
 	addi $t3, $t3, 4
-	beq $t3, $t1, onPlatform	# check entire length of platform
+	beq $t3, $s0, onPlatform	
+	addi $t3, $t3, 4
+	beq $t3, $s0, onPlatform	
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t8, $t8, 1	# incrememnt platform counter
@@ -247,14 +261,56 @@ checkOnPlatform:
 	j noPlatform
 	
 onPlatform:
-	sub $t1, $t1, 128	# jump onto platform
+	addi $sp, $sp, -4 	# save pointer back to checkPlatform
+	sw $ra, 0($sp)		
+	# TODO: trigger shift downward of platforms based on base $t1
 	
+	jal backdropShiftInit
+
+	sub $s0, $s0, 128	# jump onto platform
 	lw $t7, backgroundColour
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4	# load pointer back to checkPlatform
+	
 	jr $ra
 	
 noPlatform:
-	li $s6, 1
+	addi $sp, $sp, -4 	# save pointer back to checkPlatform
+	sw $ra, 0($sp)	
+	
+	li $t6, 0		# counter for the drop
+	
+continuousDrop:
+	
+	addi $t6, $t6, 128
+	
+	beq $t1, 0, Exit	# end game if hit bottom of screen
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4	# load pointer back to checkPlatform
+	
 	jr $ra
+
+backdropShiftInit: # recolour the background
+	lw $a0, pixel		# 1024
+	lw $a2, backgroundColour
+
+	li $t0, 0 		# loop counter
+	lw $t1, displayAddress	# base address for display
+	
+backdropShift:
+	#sw $a2, 0($t1) 		# save background colour at location
+	#add $t1, $t1, 4 	# increment to next pixel
+	#addi $t0, $t0, 1
+	#bne $t0, $a0, backdropShift	# 1024
+	
+
+platformShift:
+	
+	jr $ra
+
+	
 	
 # cross check with the array and the location doodle is at
 # drop down if no base
