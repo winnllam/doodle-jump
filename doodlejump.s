@@ -193,6 +193,7 @@ doodleJumpDown:
 		
 	j keyCheckInit
 
+
 keyCheck:
 	lw $t0, 0xffff0000
 	beq $t0, 1, movementKeyPress
@@ -211,16 +212,16 @@ movementKeyPress:
 moveDoodleLeft:
 	#beq $t1, 0x10008000, movementKeyPress	# hit left border
 		
-	sub $s0, $s0, 4		# move left
-	sw $t7, 4($s0)		# load previous colour at current location
+	sub $s0, $s0, 8		# move left
+	sw $t7, 8($s0)		# load previous colour at current location
 	
 	j moveDoodle		# skip over moveDoodleRight
 	
 moveDoodleRight:
 	#beq $t1, 0x1000807c, movementKeyPress	# hit right border
 	
-	add $s0, $s0, 4	
-	sw $t7, -4($s0)	
+	add $s0, $s0, 8	
+	sw $t7, -8($s0)	
 
 moveDoodle:	# colour saving and loading		
 	lw $t7, 0($s0)		# save new colour at location
@@ -266,6 +267,8 @@ onPlatform:
 	addi $sp, $sp, -4 	# save pointer back to checkPlatform
 	sw $ra, 0($sp)
 	
+	
+	
 	jal backdropShiftInit
 
 	sub $s0, $s0, 128	# jump onto platform
@@ -277,19 +280,19 @@ onPlatform:
 	jr $ra
 	
 noPlatform:
-	addi $sp, $sp, -4 	# save pointer back to checkPlatform
-	sw $ra, 0($sp)	
+	#addi $sp, $sp, -4 	# save pointer back to checkPlatform
+	#sw $ra, 0($sp)	
 	
-	li $t6, 0		# counter for the drop
+	li $k0, 1		# set to 1 to indicate no platform
 	
 continuousDrop:
 	
-	addi $t6, $t6, 128
+	#addi $t6, $t6, 128
 	
 	beq $t1, 0, Exit	# end game if hit bottom of screen
 	
-	lw $ra, 0($sp)
-	addi $sp, $sp, 4	# load pointer back to checkPlatform
+	#lw $ra, 0($sp)
+	#addi $sp, $sp, 4	# load pointer back to checkPlatform
 	
 	jr $ra
 
