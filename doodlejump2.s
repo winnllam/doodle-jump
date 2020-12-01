@@ -196,9 +196,7 @@ doodleJumpDown:
 	
 	bge $s5, 0x10009000, Exit
 	
-	bne $t1, 10, doodleJumpDown	# continue down	
-		
-	j doodleJumpInit
+	j doodleJumpDown	# continue down	
 
 keyCheck:
 	lw $k0, 0xffff0000
@@ -249,14 +247,14 @@ checkPlatforms:
 checkOnPlatformInit:
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
-	li $t6, 0		# counter for platform length
+	li $t5, 0		# counter for platform length
 
 checkOnPlatform:
 	beq $t3, $s5, onPlatform	# check entire length of platform (length of 6)
 	addi $t3, $t3, 4
 	
-	addi $t6, $t6, 1		# platform length counter
-	bne $t6, 6, checkOnPlatform	
+	addi $t5, $t5, 1		# platform length counter
+	bne $t5, 6, checkOnPlatform	
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t2, $t2, 1	# incrememnt platform counter
@@ -268,7 +266,7 @@ onPlatform: # TODO: on new platform? if row same as last time its a nope
 	addi $sp, $sp, -4 	# save pointer back to checkPlatform
 	sw $ra, 0($sp)
 	
-	#jal backdropShiftInit
+	jal backdropShiftInit
 
 	sub $s5, $s5, 128	# jump onto platform
 	add $t0, $s0, $zero	# save background colour
@@ -282,6 +280,48 @@ onPlatform: # TODO: on new platform? if row same as last time its a nope
 	jr $ra
 	
 noPlatform:	
+	jr $ra
+	
+### Background scroll ###
+backdropShiftInit: # recolour the background
+	li $t2, 0 		# loop counter
+	add $t3, $gp, $zero	# base address for display
+	
+backdropShift:
+	sw $s0, 0($t3) 		# save background colour at location
+	add $t3, $t3, 4 	# increment to next pixel
+	addi $t2, $t2, 1
+	bne $t2, 1024, backdropShift	# 1024
+
+platformShiftInit: 	#s1 2 3
+	add $t4, $s3, $zero 	# load platform array
+	li $t5, 0		# initialize platform counter
+	
+platformShiftDown:	# shift platforms down and store
+	lw $t6, 0($t4)		# load platform location
+	addi $t6, $t6, 128	# shift down
+	
+	sw $t6, 0($t4)		# save new value to array
+	
+	addi $t4, $t4, 4	# increment offset to next value in array
+	
+	li $t8, 0		# reset display location
+	add $t8, $gp, $t6
+	
+	li $t7, 0		# initialize platform length counter
+	
+platformShiftRight:	# draw the entire platform
+	sw $s2, 0($t8)		# colour into display
+	addi $t8, $t8, 4	# offset for rest of platform
+	
+	addi $t7, $t7, 1	# increment platform length counter
+	bne $t7, 6, platformShiftRight
+	
+	addi $t5, $t5, 1		# increment platform counter
+	bne $t5, 8, platformShiftDown	# 8 platforms at a time
+	
+	addi $s5, $s5, 128
+	
 	jr $ra
 	
 Exit:
