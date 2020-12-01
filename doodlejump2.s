@@ -65,6 +65,9 @@ platformLength:	.word 	6
 # $s4 - platform length
 # $s5 - doodle start
 # $s6 - doodle position
+# $s7 - 
+# $k0, $k1 - keyboard inputs
+# $gp - display address
 
 ### INITIALIZATION START ###
 .text
@@ -137,7 +140,7 @@ drawStartingPlatform:
 ### Draw doodle ###
 drawDoodle:
 	sw $s1, 0($s5)			# draw initial doodle
-
+	
 startKeyCheck:
 	lw $k0, 0xffff0004		# s is clicked, start game
 	bne $k0, 0x73, startKeyCheck		
@@ -145,10 +148,6 @@ startKeyCheck:
 ### INITIALIZATION END ###
 
 ### Move Doodle ###
-keyCheckInit:	# start of the jumping process
-	lw $k0, 0xffff0000
-	beq $k0, 1, movementKeyPress
-	
 doodleJumpInit:
 	li $t1, 0		# counter for distance up and down
 	add $t0, $s0, $zero
@@ -165,7 +164,6 @@ doodleJumpUp:
 	syscall
 	
 	jal keyCheck
-	
 	#jal checkPlatforms
 	
 	bne $t1, 10, doodleJumpUp	# continue up
@@ -182,13 +180,13 @@ doodleJumpDown:
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
-	
 	#jal checkPlatforms
 	
-	bne $t1, 0, doodleJumpDown	# continue down	
+	bge $s5, 0x10009000, Exit
+	
+	bne $t1, 10, doodleJumpDown	# continue down	
 		
-	j keyCheckInit
-
+	j doodleJumpInit
 
 keyCheck:
 	lw $k0, 0xffff0000
@@ -203,7 +201,7 @@ movementKeyPress:
 	beq $k0, 0x6A, moveDoodleLeft	# j
 	beq $k0, 0x6B, moveDoodleRight	# k
 	
-	j keyCheckInit		# not a movement key, continue looping
+	j doodleJumpInit		# not a movement key, continue looping
 
 moveDoodleLeft:
 	sub $s5, $s5, 8		# move left
