@@ -142,8 +142,15 @@ drawDoodle:
 	sw $s1, 0($s5)			# draw initial doodle
 	
 startKeyCheck:
-	lw $k0, 0xffff0004		# s is clicked, start game
-	bne $k0, 0x73, startKeyCheck		
+	li $v0, 32		# sleep
+	li $a0, 100
+	syscall
+	
+	lw $k0, 0xffff0000
+	beq $k0, 1, startKeyCheck
+	
+	lw $k1, 0xffff0004		# s is clicked, start game
+	bne $k1, 0x73, startKeyCheck		
 
 ### INITIALIZATION END ###
 
