@@ -155,6 +155,7 @@ keyCheckInit:	# start of the jumping process
 	beq $t0, 1, movementKeyPress
 	
 doodleJumpInit:
+	li $k0, 0
 	li $t9, 0		# counter for distance up and down
 
 doodleJumpUp:
@@ -186,13 +187,11 @@ doodleJumpDown:
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
-	
 	jal checkPlatforms
 	
 	bne $t9, 0, doodleJumpDown	# continue down	
 		
-	j keyCheckInit
-
+	j keyCheckInit		# back up
 
 keyCheck:
 	lw $t0, 0xffff0000
@@ -263,11 +262,9 @@ checkOnPlatform:
 	
 	j noPlatform
 	
-onPlatform:
+onPlatform: # TODO: on new platform? if row same as last time its a nope
 	addi $sp, $sp, -4 	# save pointer back to checkPlatform
 	sw $ra, 0($sp)
-	
-	
 	
 	jal backdropShiftInit
 
@@ -282,8 +279,7 @@ onPlatform:
 noPlatform:
 	#addi $sp, $sp, -4 	# save pointer back to checkPlatform
 	#sw $ra, 0($sp)	
-	
-	li $k0, 1		# set to 1 to indicate no platform
+
 	
 continuousDrop:
 	
@@ -315,16 +311,19 @@ platformShiftInit: 	#s1 2 3
 	li $t8, 0		# initialize platform counter
 	
 platformShiftDown:	# shift platforms down and store
-	li $t6, 0		# initialize platform length counter
-
 	lw $t3, 0($s1)		# load platform location
 	addi $t3, $t3, 128	# shift down
+	
+	bge $t3, 4096, generateTopPlatform
+	# TODO: if new location is out of bounds (> 1024), replace with a regenerated one in the top quadrant
 	sw $t3, 0($s1)		# save new value to array
 	
 	addi $s1, $s1, 4	# increment offset to next value in array
 	
 	li $s3, 0		# reset display location
 	add $s3, $gp, $t3
+	
+	li $t6, 0		# initialize platform length counter
 	
 platformShiftRight:	# draw the entire platform
 	sw $s2, 0($s3)		# colour into display
@@ -340,6 +339,17 @@ platformShiftRight:	# draw the entire platform
 	
 	jr $ra
 
+
+generateTopPlatform:
+	li $v0, 42		# RNG for platform locations
+	li $a0, 0		# number stored into $a0
+	li $a1, 128		# 1024/4
+	syscall
+	
+	mult $s4, $a0		# RNG * 4 (so multiple of 4)
+	mflo $t3
+	
+	jr $ra
 
 Exit:
 	li $v0, 10 # terminate the program gracefully
