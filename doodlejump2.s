@@ -127,8 +127,13 @@ drawPlatform:
 	
 	addi $t0, $t0, 1		# increment to next platform
 	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
+
+startingPlatformInit:
+	#li $a1, 4148	
+	#add $t6, $s3, $t1
 	
-	addi $t7, $s5, 120
+	#sw $a1, 0($t6)			# save to last spot in array		
+	addi $t7, $s5, 120		# shift down and left 2 from doodle location (128 - 4 - 4 = 120)
 	li $t5, 0
 	
 drawStartingPlatform:		
@@ -141,16 +146,16 @@ drawStartingPlatform:
 drawDoodle:
 	sw $s1, 0($s5)			# draw initial doodle
 	
-startKeyCheck:
-	li $v0, 32		# sleep
-	li $a0, 100
-	syscall
+#startKeyCheck:
+	#li $v0, 32		# sleep
+	#li $a0, 100
+	#syscall
 	
-	lw $k0, 0xffff0000
-	beq $k0, 1, startKeyCheck
+	#lw $k0, 0xffff0000
+	#beq $k0, 1, startKeyCheck
 	
-	lw $k1, 0xffff0004		# s is clicked, start game
-	bne $k1, 0x73, startKeyCheck		
+	#lw $k1, 0xffff0004		# s is clicked, start game
+	#bne $k1, 0x73, startKeyCheck		
 
 ### INITIALIZATION END ###
 
@@ -171,7 +176,7 @@ doodleJumpUp:
 	syscall
 	
 	jal keyCheck
-	#jal checkPlatforms
+	jal checkPlatforms
 	
 	bne $t1, 10, doodleJumpUp	# continue up
 	
@@ -187,7 +192,7 @@ doodleJumpDown:
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
-	#jal checkPlatforms
+	jal checkPlatforms
 	
 	bge $s5, 0x10009000, Exit
 	
@@ -226,7 +231,59 @@ moveDoodle:	# colour saving and loading
 	
 	jr $ra
 
+### Movement to platforms ###
+checkPlatforms:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)		# add pointer to jump up to stack
 
+	add $t4, $s3, $zero	# load platform location
+	li $t2, 0		# initialize platform counter
+
+	jal checkOnPlatformInit
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+checkOnPlatformInit:
+	lw $t3, 0($t4)		# load platform location
+	add $t3, $t3, $gp	# $gp is same as displayAddress
+	li $t6, 0		# counter for platform length
+
+checkOnPlatform:
+	beq $t3, $s5, onPlatform	# check entire length of platform (length of 6)
+	addi $t3, $t3, 4
+	
+	addi $t6, $t6, 1		# platform length counter
+	bne $t6, 6, checkOnPlatform	
+	
+	addi $t4, $t4, 4	# increment offset
+	addi $t2, $t2, 1	# incrememnt platform counter
+	bne $t2, 8, checkOnPlatformInit 
+	
+	j noPlatform
+	
+onPlatform: # TODO: on new platform? if row same as last time its a nope
+	addi $sp, $sp, -4 	# save pointer back to checkPlatform
+	sw $ra, 0($sp)
+	
+	#jal backdropShiftInit
+
+	sub $s5, $s5, 128	# jump onto platform
+	add $t0, $s0, $zero	# save background colour
+	
+	li $t1, 0		# reset jump counter
+	j doodleJumpUp
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4	# load pointer back to checkPlatform
+	
+	jr $ra
+	
+noPlatform:	
+	jr $ra
+	
 Exit:
 	li $v0, 10 # terminate the program gracefully
 	syscall
