@@ -129,10 +129,10 @@ drawPlatform:
 	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
 
 startingPlatformInit:
-	#li $a1, 4148	
-	#add $t6, $s3, $t1
-	
-	#sw $a1, 0($t6)			# save to last spot in array		
+	li $a1, 3636			# platform pixel location
+	addi $t6, $s3, 28
+	sw $a1, 0($t6)			# save to last spot in array	
+		
 	addi $t7, $s5, 120		# shift down and left 2 from doodle location (128 - 4 - 4 = 120)
 	li $t5, 0
 	
