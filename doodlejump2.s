@@ -48,6 +48,8 @@ platformColour:		.word	0x74bea7	# green
 left:		.word 0x6A	# j 
 right:		.word 0x6B	# k
 start:		.word 0x73
+keyboardAddress1:	.word	0xffff0000
+keyboardAddress2:	.word	0xffff0004
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
@@ -62,6 +64,7 @@ platformLength:	.word 	6
 # $s3 - platform array
 # $s4 - platform length
 # $s5 - doodle start
+# $s6 - doodle position
 
 ### INITIALIZATION START ###
 .text
@@ -90,7 +93,7 @@ initPlatforms:
 	li $t1, 0		# offset shifts for platform array
 	li $t2, 0		# partition for platform locations
 
-platformPrep:
+generateLocation:
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
 	li $a1, 128		# 1024/4
@@ -104,7 +107,7 @@ platformPrep:
 
 	li $t5, 0 		# loop counter
 	
-loadPlatformLocation:
+loadPlatformAddress:
 	li $t4, 4		# multiplier
 	mult $t4, $a0		# RNG * 4 (so multiple of 4)
 	mflo $a1
@@ -120,7 +123,7 @@ drawPlatform:
 	bne $t5, $s4, drawPlatform	# platform length is 5
 	
 	addi $t0, $t0, 1		# increment to next platform
-	bne $t0, 7, platformPrep	# loop to generate another platform (7 times)
+	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
 	
 	addi $t7, $s5, 120
 	li $t5, 0
@@ -130,4 +133,95 @@ drawStartingPlatform:
 	addi $t5, $t5, 1
 	addi $t7, $t7, 4
 	bne $t5, $s4, drawStartingPlatform
+
+### Draw doodle ###
+drawDoodle:
+	sw $s1, 0($s5)			# draw initial doodle
+
+startKeyCheck:
+	lw $k0, 0xffff0004		# s is clicked, start game
+	bne $k0, 0x73, startKeyCheck		
+
+### INITIALIZATION END ###
+
+### Move Doodle ###
+keyCheckInit:	# start of the jumping process
+	lw $k0, 0xffff0000
+	beq $k0, 1, movementKeyPress
 	
+doodleJumpInit:
+	li $t1, 0		# counter for distance up and down
+	add $t0, $s0, $zero
+
+doodleJumpUp:
+	sub $s5, $s5, 128	# up
+	sw $t0, 128($s5)	
+	jal moveDoodle
+	
+	addi $t1, $t1, 1
+	
+	li $v0, 32		# sleep to delay animation
+	lw $a0, jumpDelay
+	syscall
+	
+	jal keyCheck
+	
+	#jal checkPlatforms
+	
+	bne $t1, 10, doodleJumpUp	# continue up
+	
+doodleJumpDown:
+	addi $s5, $s5, 128	# down
+	sw $t0, -128($s5)	
+	jal moveDoodle
+	
+	sub $t1, $t1, 1
+	
+	li $v0, 32		# sleep to delay animation
+	lw $a0, jumpDelay
+	syscall
+	
+	jal keyCheck		# check for input while movement to continue
+	
+	#jal checkPlatforms
+	
+	bne $t1, 0, doodleJumpDown	# continue down	
+		
+	j keyCheckInit
+
+
+keyCheck:
+	lw $k0, 0xffff0000
+	beq $k0, 1, movementKeyPress
+	
+	jr $ra
+
+movementKeyPress:	
+	lw $k0, 0xffff0004
+	beq $k0, 0x73, main	# s for restart
+	
+	beq $k0, 0x6A, moveDoodleLeft	# j
+	beq $k0, 0x6B, moveDoodleRight	# k
+	
+	j keyCheckInit		# not a movement key, continue looping
+
+moveDoodleLeft:
+	sub $s5, $s5, 8		# move left
+	sw $t0, 8($s5)		# load previous colour at current location
+	
+	j moveDoodle		# skip over moveDoodleRight
+	
+moveDoodleRight:
+	add $s5, $s5, 8	
+	sw $t0, -8($s5)	
+
+moveDoodle:	# colour saving and loading		
+	lw $t0, 0($s5)		# save new colour at location
+	sw $s1, 0($s5)		# load new colour
+	
+	jr $ra
+
+
+Exit:
+	li $v0, 10 # terminate the program gracefully
+	syscall
