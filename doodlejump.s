@@ -34,7 +34,8 @@
 .data
 
 # Display locations
-doodleStart: 	.word	0x10008dc0
+doodleStart: 		.word	0x10008dc0
+basePlatformRow:	.word	3584#0x10008e00	#+128 for next row (3584)
 
 # Anmiation delay
 jumpDelay:	.word	100
@@ -57,7 +58,7 @@ platformLength:	.word 	6
 
 ### REGISTERS ###
 # $a2
-# $a3 - current platform
+# $a3 
 # $s0 - background colour
 # $s1 - doodle colour
 # $s2 - platform colour
@@ -65,7 +66,7 @@ platformLength:	.word 	6
 # $s4 - platform length
 # $s5 - doodle start
 # $s6 - doodle position
-# $s7 - 
+# $s7 - base platform
 # $k0, $k1 - keyboard inputs
 # $gp - display address
 
@@ -78,6 +79,7 @@ main:
 	la $s3, platforms
 	lw $s4, platformLength
 	lw $s5, doodleStart
+	lw $s7, basePlatformRow
 
 ### Fill background ###
 backgroundFillInit:
@@ -129,7 +131,7 @@ drawPlatform:
 	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
 
 startingPlatformInit:
-	li $a1, 3636			# platform pixel location
+	li $a1, 3640		# platform pixel location
 	addi $t6, $s3, 28
 	sw $a1, 0($t6)			# save to last spot in array	
 		
@@ -248,6 +250,8 @@ checkOnPlatformInit:
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
 	li $t5, 0		# counter for platform length
+	
+	#sub $k1, $t3, $gp
 
 checkOnPlatform:
 	beq $t3, $s5, onPlatform	# check entire length of platform (length of 6)
@@ -262,15 +266,22 @@ checkOnPlatform:
 	
 	j noPlatform
 	
-onPlatform: # TODO: on new platform? if row same as last time its a nope
+onPlatform:
 	addi $sp, $sp, -4 	# save pointer back to checkPlatform
 	sw $ra, 0($sp)
 	
+	sub $t8, $s5, $gp	# get number value of doodle
+	addi $t9, $s7, 128	# end of the row ($s7 beginning of row)
+	ble $t8, $s7, notSamePlatform		# before the row, skip
+	ble $t8, $t9, endPlatformCheck				# after row and before next row, no shifting
+
+notSamePlatform:
 	jal backdropShiftInit
 
 	sub $s5, $s5, 128	# jump onto platform
-	add $t0, $s0, $zero	# save background colour
-	
+	add $t0, $s0, $zero	# save background colour	
+
+endPlatformCheck:
 	li $t1, 0		# reset jump counter
 	j doodleJumpUp
 	
@@ -278,7 +289,7 @@ onPlatform: # TODO: on new platform? if row same as last time its a nope
 	addi $sp, $sp, 4	# load pointer back to checkPlatform
 	
 	jr $ra
-	
+
 noPlatform:	
 	jr $ra
 	
