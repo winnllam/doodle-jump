@@ -273,7 +273,7 @@ onPlatform:
 	sub $t8, $s5, $gp	# get number value of doodle
 	addi $t9, $s7, 128	# end of the row ($s7 beginning of row)
 	ble $t8, $s7, notSamePlatform		# before the row, skip
-	ble $t8, $t9, endPlatformCheck				# after row and before next row, no shifting
+	blt $t8, $t9, endPlatformCheck				# after row and before next row, no shifting
 
 notSamePlatform:
 	jal backdropShiftInit
@@ -304,7 +304,7 @@ backdropShift:
 	addi $t2, $t2, 1
 	bne $t2, 1024, backdropShift	# 1024
 
-platformShiftInit: 	#s1 2 3
+platformShiftInit:	
 	add $t4, $s3, $zero 	# load platform array
 	li $t5, 0		# initialize platform counter
 	
@@ -312,14 +312,14 @@ platformShiftDown:	# shift platforms down and store
 	lw $t6, 0($t4)		# load platform location
 	addi $t6, $t6, 128	# shift down
 	
-	ble $t6, 4096, continuePlatformShift	# check if there is a need to generate top platform
+	ble $t6, 4096, continuePlatformShift	# skip generation of new top platform
 	
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
 	li $a1, 128		# 1024/8 = 128
 	syscall
 	
-	li $t9, 4
+	li $t9, 4		# calculate new top platform value
 	mult $t9, $a0
 	mflo $t6
 	
@@ -344,6 +344,9 @@ platformShiftRight:	# draw the entire platform
 	bne $t5, 8, platformShiftDown	# 8 platforms at a time
 	
 	addi $s5, $s5, 128		# shift doodle position
+	
+	sub $t9, $s5, $gp	# get number value of doodle
+	blt $t9, $s7, backdropShiftInit		# before the row, shift down more
 	
 	jr $ra
 	
