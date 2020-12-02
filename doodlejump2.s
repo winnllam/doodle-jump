@@ -57,7 +57,7 @@ platformLength:	.word 	6
 
 ### REGISTERS ###
 # $a2
-# $a3
+# $a3 - current platform
 # $s0 - background colour
 # $s1 - doodle colour
 # $s2 - platform colour
@@ -301,6 +301,18 @@ platformShiftDown:	# shift platforms down and store
 	lw $t6, 0($t4)		# load platform location
 	addi $t6, $t6, 128	# shift down
 	
+	ble $t6, 4096, continuePlatformShift	# check if there is a need to generate top platform
+	
+	li $v0, 42		# RNG for platform locations
+	li $a0, 0		# number stored into $a0
+	li $a1, 128		# 1024/8 = 128
+	syscall
+	
+	li $t9, 4
+	mult $t9, $a0
+	mflo $t6
+	
+continuePlatformShift:
 	sw $t6, 0($t4)		# save new value to array
 	
 	addi $t4, $t4, 4	# increment offset to next value in array
@@ -320,9 +332,10 @@ platformShiftRight:	# draw the entire platform
 	addi $t5, $t5, 1		# increment platform counter
 	bne $t5, 8, platformShiftDown	# 8 platforms at a time
 	
-	addi $s5, $s5, 128
+	addi $s5, $s5, 128		# shift doodle position
 	
 	jr $ra
+	
 	
 Exit:
 	li $v0, 10 # terminate the program gracefully
