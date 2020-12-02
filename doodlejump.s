@@ -44,6 +44,7 @@ jumpDelay:	.word	100
 backgroundColour:	.word	0xc2e6ec 	# blue
 doodleColour:		.word	0x745185 	# purple
 platformColour:		.word	0x74bea7	# green
+white:			.word	0xffffff
 
 # Controls (ASCII numbers)
 left:		.word 0x6A	# j 
@@ -56,16 +57,26 @@ keyboardAddress2:	.word	0xffff0004
 platforms:	.space 	32	# 4 byte * 8 platforms
 platformLength:	.word 	6
 
+# Letters and numbers
+zero: 		.word	1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
+one:		.word	0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1
+two:		.word	1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 
+three:		.word	1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1
+B: 		.word	1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1
+Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
+E:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1
+exclaim:	.word	0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0
+
 ### REGISTERS ###
 # $a2
-# $a3 
+# $a3 - score
 # $s0 - background colour
 # $s1 - doodle colour
 # $s2 - platform colour
 # $s3 - platform array
 # $s4 - platform length
 # $s5 - doodle start
-# $s6 - doodle position
+# $s6 - 
 # $s7 - base platform
 # $k0, $k1 - keyboard inputs
 # $gp - display address
@@ -147,7 +158,7 @@ drawStartingPlatform:
 ### Draw doodle ###
 drawDoodle:
 	sw $s1, 0($s5)			# draw initial doodle
-	
+
 #startKeyCheck:
 	#li $v0, 32		# sleep
 	#li $a0, 100
@@ -273,10 +284,12 @@ onPlatform:
 	sub $t8, $s5, $gp	# get number value of doodle
 	addi $t9, $s7, 128	# end of the row ($s7 beginning of row)
 	ble $t8, $s7, notSamePlatform		# before the row, skip
-	blt $t8, $t9, endPlatformCheck				# after row and before next row, no shifting
+	blt $t8, $t9, endPlatformCheck		# after row and before next row, no shifting
 
 notSamePlatform:
-	jal backdropShiftInit
+	addi $a3, $a3, 1 	# add to the score (jumped on platform)
+
+	jal backdropShiftInit	# scroll the screen
 
 	sub $s5, $s5, 128	# jump onto platform
 	add $t0, $s0, $zero	# save background colour	
@@ -349,8 +362,59 @@ platformShiftRight:	# draw the entire platform
 	blt $t9, $s7, backdropShiftInit		# before the row, shift down more
 	
 	jr $ra
+
+drawCharactersInit:	# take in $t9 for location, $s6 for character
+	li $t7, 0		# row counter
+	li $t6, 0		# column counter
+	j drawCharacterRow
+
+charIncrement:
+	addi $t9, $t9, 4	# pixel offset
+	addi $s6, $s6, 4	# array offset
+
+drawCharacterRow:
+	lw $t8 , 0($s6)		# load value from array
+	addi $t7, $t7, 1	# increment row counter
 	
+	bne $t8, $zero, savePixel	
+	beq $t7, 3, charNextRow		
+	
+	j charIncrement
+	
+savePixel:
+	sw $s1, 0($t9)			# draw if not 0
+	bne $t7, 3, charIncrement	# do it again if not end of row
+
+charNextRow:
+	addi $t9, $t9, 128		# add next row
+	sub $t9, $t9, 12		# sub row values
+	
+	add $t6, $t6, 1		
+	li $t7, 0			# reset row counter
+	bne $t6, 5, charIncrement
+
+	jr $ra
 	
 Exit:
+	li $t9, 0x10008520
+	la $s6, B
+	
+	jal drawCharactersInit
+
+	li $t9, 0x10008530
+	la $s6, Y	
+	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008540
+	la $s6, E
+	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008550
+	la $s6, exclaim
+	
+	jal drawCharactersInit
+	
 	li $v0, 10 # terminate the program gracefully
 	syscall
