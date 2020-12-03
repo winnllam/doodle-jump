@@ -62,9 +62,19 @@ zero: 		.word	1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
 one:		.word	0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1
 two:		.word	1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 
 three:		.word	1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1
+four:		.word	1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1
+five:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1
+six:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1
+seven:		.word	1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1
+eight:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1
+nine:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1
+A:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1
 B: 		.word	1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1
-Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
 E:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1
+R:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1
+S:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1
+T:		.word	1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0
+Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
 exclaim:	.word	0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0
 
 ### REGISTERS ###
@@ -102,7 +112,7 @@ backgroundFill:
 	add $t1, $t1, 4 	# increment to next pixel
 	addi $t0, $t0, 1
 	bne $t0, 1024, backgroundFill	# 1024 pixels
-	
+
 ### Draw platforms ###
 initPlatforms:
 	li $t0, 0		# counter for # of platforms
@@ -157,18 +167,20 @@ drawStartingPlatform:
 
 ### Draw doodle ###
 drawDoodle:
-	sw $s1, 0($s5)			# draw initial doodle
+	sw $s1, 0($s5)	# draw initial doodle		
+	
+	jal drawScore	# draw initial score of 0		
 
-#startKeyCheck:
-	#li $v0, 32		# sleep
-	#li $a0, 100
-	#syscall
+startKeyCheck:
+	li $v0, 32		# sleep
+	li $a0, 100
+	syscall
 	
-	#lw $k0, 0xffff0000
-	#beq $k0, 1, startKeyCheck
+	lw $k0, 0xffff0000
+	beq $k0, 0, startKeyCheck
 	
-	#lw $k1, 0xffff0004		# s is clicked, start game
-	#bne $k1, 0x73, startKeyCheck		
+	lw $k1, 0xffff0004		# s is clicked, start game
+	bne $k1, 0x73, startKeyCheck
 
 ### INITIALIZATION END ###
 
@@ -178,6 +190,8 @@ doodleJumpInit:
 	add $t0, $s0, $zero
 
 doodleJumpUp:
+	jal drawScore	# update the score after all the redrawing
+
 	sub $s5, $s5, 128	# up
 	sw $t0, 128($s5)	
 	jal moveDoodle
@@ -394,26 +408,141 @@ charNextRow:
 	bne $t6, 5, charIncrement
 
 	jr $ra
+
+drawScore:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
 	
+	li $k1, 0
+	li $t9, 10
+			# for 2 digits, this is first digit
+drawFirstDigit:	
+	div $a3, $t9
+	mflo $v1
+	
+	li $k0, 0		# set to zero for first digit
+	add $t9, $gp, $k0
+	
+	beq $v1, 0, drawZero
+	beq $v1, 1, drawOne
+	beq $v1, 2, drawTwo
+	beq $v1, 3, drawThree
+	beq $v1, 4, drawFour
+	beq $v1, 5, drawFive
+	beq $v1, 6, drawSix
+	beq $v1, 7, drawSeven
+	beq $v1, 8, drawEight
+	beq $v1, 9, drawNine
+
+drawSecondDigit:
+	mfhi $v1		# for 2 digits, this is second digit
+	li $k0, 16		# set to 12 for second digit
+	add $t9, $gp, $k0
+	
+	beq $k1, 2, endScoreUpdate
+	beq $v1, 0, drawZero
+	beq $v1, 1, drawOne
+	beq $v1, 2, drawTwo
+	beq $v1, 3, drawThree
+	beq $v1, 4, drawFour
+	beq $v1, 5, drawFive
+	beq $v1, 6, drawSix
+	beq $v1, 7, drawSeven
+	beq $v1, 8, drawEight
+	beq $v1, 9, drawNine
+		
+drawZero:
+	la $s6, zero
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawOne:					
+	la $s6, one
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawTwo:					
+	la $s6, two
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawThree:					
+	la $s6, three
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawFour:					
+	la $s6, four
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawFive:					
+	la $s6, five
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawSix:					
+	la $s6, six
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawSeven:					
+	la $s6, seven
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawEight:					
+	la $s6, eight
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+	
+drawNine:					
+	la $s6, nine
+	jal drawCharactersInit
+	
+	addi $k1, $k1, 1
+	j drawSecondDigit
+
+endScoreUpdate:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+
 Exit:
 	li $t9, 0x10008520
 	la $s6, B
-	
 	jal drawCharactersInit
 
 	li $t9, 0x10008530
 	la $s6, Y	
-	
 	jal drawCharactersInit
 	
 	li $t9, 0x10008540
 	la $s6, E
-	
 	jal drawCharactersInit
 	
 	li $t9, 0x10008550
 	la $s6, exclaim
-	
 	jal drawCharactersInit
 	
 	li $v0, 10 # terminate the program gracefully
