@@ -423,22 +423,16 @@ drawFirstDigit:
 	li $k0, 0		# set to zero for first digit
 	add $t9, $gp, $k0
 	
-	beq $v1, 0, drawZero
-	beq $v1, 1, drawOne
-	beq $v1, 2, drawTwo
-	beq $v1, 3, drawThree
-	beq $v1, 4, drawFour
-	beq $v1, 5, drawFive
-	beq $v1, 6, drawSix
-	beq $v1, 7, drawSeven
-	beq $v1, 8, drawEight
-	beq $v1, 9, drawNine
+	j checkNumber
 
 drawSecondDigit:
 	mfhi $v1		# for 2 digits, this is second digit
 	li $k0, 16		# set to 12 for second digit
 	add $t9, $gp, $k0
 	
+	j checkNumber
+
+checkNumber:
 	beq $k1, 2, endScoreUpdate
 	beq $v1, 0, drawZero
 	beq $v1, 1, drawOne
@@ -450,76 +444,52 @@ drawSecondDigit:
 	beq $v1, 7, drawSeven
 	beq $v1, 8, drawEight
 	beq $v1, 9, drawNine
-		
-drawZero:
-	la $s6, zero
+
+drawNumber:
 	jal drawCharactersInit
 	
 	addi $k1, $k1, 1
 	j drawSecondDigit
+	
+drawZero:
+	la $s6, zero
+	j drawNumber	
 	
 drawOne:					
 	la $s6, one
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawTwo:					
 	la $s6, two
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawThree:					
 	la $s6, three
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawFour:					
 	la $s6, four
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawFive:					
 	la $s6, five
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawSix:					
 	la $s6, six
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawSeven:					
 	la $s6, seven
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawEight:					
 	la $s6, eight
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 	
 drawNine:					
 	la $s6, nine
-	jal drawCharactersInit
-	
-	addi $k1, $k1, 1
-	j drawSecondDigit
+	j drawNumber
 
 endScoreUpdate:
 	lw $ra, 0($sp)
