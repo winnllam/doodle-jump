@@ -35,10 +35,10 @@
 
 # Display locations
 doodleStart: 		.word	0x10009dc0
-basePlatformRow:	.word	7680 #0x10008e00	#+128 for next row (3584)
+basePlatformRow:	.word	7680		# 0x10008e00 (3584)
 
 # Anmiation delay
-jumpDelay:	.word	100
+jumpDelay:	.word	85
 
 # Colours
 backgroundColour:	.word	0xc2e6ec 	# blue
@@ -49,9 +49,7 @@ white:			.word	0xffffff
 # Controls (ASCII numbers)
 left:		.word 0x6A	# j 
 right:		.word 0x6B	# k
-start:		.word 0x73
-keyboardAddress1:	.word	0xffff0000
-keyboardAddress2:	.word	0xffff0004
+start:		.word 0x73	# s
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
@@ -74,6 +72,7 @@ E:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1
 R:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1
 S:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1
 T:		.word	1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0
+W:		.word	1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1
 Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
 exclaim:	.word	0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0
 
@@ -192,7 +191,8 @@ doodleJumpInit:
 
 doodleJumpUp:
 	jal drawScore	# update the score after all the redrawing
-
+	jal printWow	# print on screen if score is multiple of 10
+	
 	sub $s5, $s5, 128	# up
 	sw $t0, 128($s5)	
 	jal moveDoodle
@@ -378,6 +378,7 @@ platformShiftRight:	# draw the entire platform
 	
 	jr $ra
 
+### Draw characters on screen ###
 drawCharactersInit:	# take in $t9 for location, $s6 for character
 	li $t7, 0		# row counter
 	li $t6, 0		# column counter
@@ -410,31 +411,30 @@ charNextRow:
 
 	jr $ra
 
+### Draw score on screen ###
 drawScore:
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)
 	
 	li $k1, 0
 	li $t9, 10
-			# for 2 digits, this is first digit
+			
 drawFirstDigit:	
 	div $a3, $t9
-	mflo $v1
+	mflo $v1	# first digit
 	
-	li $k0, 0		# set to zero for first digit
-	add $t9, $gp, $k0
+	addi $t9, $gp, 0
 	
 	j checkNumber
 
 drawSecondDigit:
-	mfhi $v1		# for 2 digits, this is second digit
-	li $k0, 16		# set to 12 for second digit
-	add $t9, $gp, $k0
-	
+	mfhi $v1	# second digit
+	addi $t9, $gp, 16
+
 	j checkNumber
 
 checkNumber:
-	beq $k1, 2, endScoreUpdate
+	beq $k1, 2, endScoreUpdate	# went through first and second digit
 	beq $v1, 0, drawZero
 	beq $v1, 1, drawOne
 	beq $v1, 2, drawTwo
@@ -498,6 +498,45 @@ endScoreUpdate:
 	
 	jr $ra
 
+### Print WOW! ###
+printWow:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	beq $a3, 0, noWow	# 0 has no wow
+	
+	li $t9, 10
+	div $a3, $t9
+	mfhi $v1
+	
+	bne $v1, 0, noWow	# no wow if not multiple of 10
+
+	li $t9, 0x10008520	# draw wow
+	la $s6, W
+	jal drawCharactersInit
+
+	li $t9, 0x10008530
+	la $s6, zero	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008540
+	la $s6, W
+	jal drawCharactersInit
+	
+	li $t9, 0x10008550
+	la $s6, exclaim
+	jal drawCharactersInit
+
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+noWow:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
 
 Exit:
 	li $t9, 0x10008520
@@ -516,5 +555,5 @@ Exit:
 	la $s6, exclaim
 	jal drawCharactersInit
 	
-	li $v0, 10 # terminate the program gracefully
+	li $v0, 10	# terminate the program gracefully
 	syscall
