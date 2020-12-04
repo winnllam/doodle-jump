@@ -6,9 +6,9 @@
 # Student: Winnie Lam, 1004971792
 #
 # Bitmap Display Configuration:
-# - Unit width in pixels: 16					     
-# - Unit height in pixels: 16
-# - Display width in pixels: 512
+# - Unit width in pixels: 8					     
+# - Unit height in pixels: 8
+# - Display width in pixels: 256
 # - Display height in pixels: 512
 # - Base Address for Display: 0x10008000 ($gp)
 #
@@ -34,8 +34,8 @@
 .data
 
 # Display locations
-doodleStart: 		.word	0x10008dc0
-basePlatformRow:	.word	3584#0x10008e00	#+128 for next row (3584)
+doodleStart: 		.word	0x10009dc0
+basePlatformRow:	.word	7680 #0x10008e00	#+128 for next row (3584)
 
 # Anmiation delay
 jumpDelay:	.word	100
@@ -55,7 +55,7 @@ keyboardAddress2:	.word	0xffff0004
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
-platformLength:	.word 	6
+platformLength:	.word 	8
 
 # Letters and numbers
 zero: 		.word	1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
@@ -111,7 +111,7 @@ backgroundFill:
 	sw $s0, 0($t1) 		# save background colour at location
 	add $t1, $t1, 4 	# increment to next pixel
 	addi $t0, $t0, 1
-	bne $t0, 1024, backgroundFill	# 1024 pixels
+	bne $t0, 2048, backgroundFill	# 2048 pixels
 
 ### Draw platforms ###
 initPlatforms:
@@ -122,11 +122,11 @@ initPlatforms:
 generateLocation:
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
-	li $a1, 128		# 1024/4
+	li $a1, 256		# 2048/4
 	syscall
 	
 	add $a0, $a0, $t2 	# add section offset for platform
-	addi $t2, $t2, 128
+	addi $t2, $t2, 256
 	
 	add $t6, $s3, $t1
 	addi $t1, $t1, 4	# update platform array offset
@@ -152,7 +152,7 @@ drawPlatform:
 	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
 
 startingPlatformInit:
-	li $a1, 3640		# platform pixel location
+	li $a1, 7736		# platform pixel location
 	addi $t6, $s3, 28
 	sw $a1, 0($t6)			# save to last spot in array	
 		
@@ -169,6 +169,7 @@ drawStartingPlatform:
 drawDoodle:
 	sw $s1, 0($s5)	# draw initial doodle		
 	
+	li $a3, 0
 	jal drawScore	# draw initial score of 0		
 
 startKeyCheck:
@@ -205,7 +206,7 @@ doodleJumpUp:
 	jal keyCheck
 	jal checkPlatforms
 	
-	bne $t1, 10, doodleJumpUp	# continue up
+	bne $t1, 15, doodleJumpUp	# continue up
 	
 doodleJumpDown:
 	addi $s5, $s5, 128	# down
@@ -221,7 +222,7 @@ doodleJumpDown:
 	jal keyCheck		# check for input while movement to continue
 	jal checkPlatforms
 	
-	bge $s5, 0x10009000, Exit
+	bge $s5, 0x1000a000, Exit
 	
 	j doodleJumpDown	# continue down	
 
@@ -279,11 +280,11 @@ checkOnPlatformInit:
 	#sub $k1, $t3, $gp
 
 checkOnPlatform:
-	beq $t3, $s5, onPlatform	# check entire length of platform (length of 6)
+	beq $t3, $s5, onPlatform	# check entire length of platform (length of 8)
 	addi $t3, $t3, 4
 	
 	addi $t5, $t5, 1		# platform length counter
-	bne $t5, 6, checkOnPlatform	
+	bne $t5, 8, checkOnPlatform	
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t2, $t2, 1	# incrememnt platform counter
@@ -301,8 +302,6 @@ onPlatform:
 	blt $t8, $t9, endPlatformCheck		# after row and before next row, no shifting
 
 notSamePlatform:
-	addi $a3, $a3, 1 	# add to the score (jumped on platform)
-
 	jal backdropShiftInit	# scroll the screen
 
 	sub $s5, $s5, 128	# jump onto platform
@@ -329,7 +328,7 @@ backdropShift:
 	sw $s0, 0($t3) 		# save background colour at location
 	add $t3, $t3, 4 	# increment to next pixel
 	addi $t2, $t2, 1
-	bne $t2, 1024, backdropShift	# 1024
+	bne $t2, 2048, backdropShift	# 2048
 
 platformShiftInit:	
 	add $t4, $s3, $zero 	# load platform array
@@ -339,11 +338,13 @@ platformShiftDown:	# shift platforms down and store
 	lw $t6, 0($t4)		# load platform location
 	addi $t6, $t6, 128	# shift down
 	
-	ble $t6, 4096, continuePlatformShift	# skip generation of new top platform
+	ble $t6, 8192, continuePlatformShift	# skip generation of new top platform
+	
+	addi $a3, $a3, 1 	# add to the score (platform reached EOL)
 	
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
-	li $a1, 128		# 1024/8 = 128
+	li $a1, 256		# 2048/8 = 256
 	syscall
 	
 	li $t9, 4		# calculate new top platform value
@@ -365,7 +366,7 @@ platformShiftRight:	# draw the entire platform
 	addi $t8, $t8, 4	# offset for rest of platform
 	
 	addi $t7, $t7, 1	# increment platform length counter
-	bne $t7, 6, platformShiftRight
+	bne $t7, 8, platformShiftRight
 	
 	addi $t5, $t5, 1		# increment platform counter
 	bne $t5, 8, platformShiftDown	# 8 platforms at a time
