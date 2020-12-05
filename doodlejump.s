@@ -34,7 +34,7 @@
 
 # Display locations
 doodleStart: 		.word	0x10009dc0
-basePlatformRow:	.word	7680		# 0x10008e00 (3584)
+basePlatformRow:	.word	7552		# 0x10008e00 (3584)
 
 # Anmiation delay
 jumpDelay:	.word	85
@@ -151,11 +151,11 @@ drawPlatform:
 	bne $t0, 7, generateLocation	# loop to generate another platform (7 times)
 
 startingPlatformInit:
-	li $a1, 7736		# platform pixel location
+	li $a1, 8120		# platform pixel location
 	addi $t6, $s3, 28
 	sw $a1, 0($t6)			# save to last spot in array	
 		
-	addi $t7, $s5, 120		# shift down and left 2 from doodle location (128 - 4 - 4 = 120)
+	addi $t7, $s5, 504		# shift down and left 2 from doodle location (128 - 4 - 4 = 120)
 	li $t5, 0
 	
 drawStartingPlatform:		
@@ -173,9 +173,7 @@ drawDoodle:	#t9 for position
 
 	add $t9, $zero, $s5
 	la $s6, doodle	
-	jal drawCharactersInit
-	
-	#sw $s1, 0($s5)	# draw initial doodle		
+	jal drawCharactersInit	
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -231,7 +229,6 @@ doodleJumpUp:
 	jal clearDoodle
 	
 	sub $s5, $s5, 128	# up
-	#sw $t0, 128($s5)
 	jal drawDoodle	
 	jal moveDoodle
 	
@@ -250,7 +247,6 @@ doodleJumpDown:
 	jal clearDoodle
 	
 	addi $s5, $s5, 128	# down
-	#sw $t0, -128($s5)
 	jal drawDoodle	
 	jal moveDoodle
 	
@@ -341,9 +337,8 @@ checkPlatforms:
 checkOnPlatformInit:
 	lw $t3, 0($t4)		# load platform location
 	add $t3, $t3, $gp	# $gp is same as displayAddress
+	sub $t3, $t3, 512 	# add 3 rows to account for doodle
 	li $t5, 0		# counter for platform length
-	
-	#sub $k1, $t3, $gp
 
 checkOnPlatform:
 	beq $t3, $s5, onPlatform	# check entire length of platform (length of 8)
