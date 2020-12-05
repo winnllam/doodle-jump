@@ -18,16 +18,15 @@
 #
 # Which approved additional features have been implemented?
 # (See the assignment handout for the list of additional features)
-# 1. (fill in the feature, if any)
-# 2. (fill in the feature, if any)
-# 3. (fill in the feature, if any)
-# ... (add more if necessary)
+# 1. Fancier graphics
+# 2. Boosting / Power ups
+# 3. Dynamic on-screen notifications
 #
 # Link to video demonstration for final submission:
 # - (insert YouTube / MyMedia / other URL here). 
 #
 # Any additional information that the TA needs to know:
-# - (write here, if any)
+# - some luck is needed in the game due to random platform location spawns :)
 #
 #####################################################################
 
@@ -54,6 +53,7 @@ start:		.word 0x73	# s
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
 platformLength:	.word 	8
+doodle:		.word 	0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0
 
 # Letters and numbers
 zero: 		.word	1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
@@ -163,10 +163,45 @@ drawStartingPlatform:
 	addi $t5, $t5, 1
 	addi $t7, $t7, 4
 	bne $t5, $s4, drawStartingPlatform
+	
+	j drawStartingDoodle
 
 ### Draw doodle ###
-drawDoodle:
-	sw $s1, 0($s5)	# draw initial doodle		
+drawDoodle:	#t9 for position
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)		# add pointer to jump up to stack
+
+	add $t9, $zero, $s5
+	la $s6, doodle	
+	jal drawCharactersInit
+	
+	#sw $s1, 0($s5)	# draw initial doodle		
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+### Clear location of doodle
+clearDoodle:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	lw $s1, backgroundColour
+	
+	add $t9, $zero, $s5
+	la $s6, doodle	
+	jal drawCharactersInit
+	
+	lw $s1, doodleColour
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
+
+drawStartingDoodle:
+	jal drawDoodle
 	
 	li $a3, 0
 	jal drawScore	# draw initial score of 0		
@@ -193,8 +228,11 @@ doodleJumpUp:
 	jal drawScore	# update the score after all the redrawing
 	jal printWow	# print on screen if score is multiple of 10
 	
+	jal clearDoodle
+	
 	sub $s5, $s5, 128	# up
-	sw $t0, 128($s5)	
+	#sw $t0, 128($s5)
+	jal drawDoodle	
 	jal moveDoodle
 	
 	addi $t1, $t1, 1
@@ -209,8 +247,11 @@ doodleJumpUp:
 	bne $t1, 15, doodleJumpUp	# continue up
 	
 doodleJumpDown:
+	jal clearDoodle
+	
 	addi $s5, $s5, 128	# down
-	sw $t0, -128($s5)	
+	#sw $t0, -128($s5)
+	jal drawDoodle	
 	jal moveDoodle
 	
 	sub $t1, $t1, 1
@@ -232,7 +273,7 @@ keyCheck:
 	
 	jr $ra
 
-movementKeyPress:	
+movementKeyPress:
 	lw $k0, 0xffff0004
 	beq $k0, 0x73, main	# s for restart
 	
@@ -240,20 +281,45 @@ movementKeyPress:
 	beq $k0, 0x6B, moveDoodleRight	# k
 	
 	j doodleJumpInit		# not a movement key, continue looping
-
-moveDoodleLeft:
-	sub $s5, $s5, 8		# move left
-	sw $t0, 8($s5)		# load previous colour at current location
 	
-	j moveDoodle		# skip over moveDoodleRight
+moveDoodleLeft:
+	addi $sp, $sp, -4	# save jump location keyPress
+	sw $ra, 0($sp)
+	
+	jal clearDoodle
+
+	sub $s5, $s5, 8		# move left
+	
+	jal moveDoodle		# skip over moveDoodleRight
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
 	
 moveDoodleRight:
-	add $s5, $s5, 8	
-	sw $t0, -8($s5)	
+	addi $sp, $sp, -4	# save jump location keyPress
+	sw $ra, 0($sp)
+	
+	jal clearDoodle
+	
+	add $s5, $s5, 8		
+	
+	jal moveDoodle
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	
+	jr $ra
 
-moveDoodle:	# colour saving and loading		
-	lw $t0, 0($s5)		# save new colour at location
-	sw $s1, 0($s5)		# load new colour
+moveDoodle:	# colour saving and loading	
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	jal drawDoodle
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4 
 	
 	jr $ra
 
