@@ -14,12 +14,12 @@
 #
 # Which milestone is reached in this submission?
 # (See the assignment handout for descriptions of the milestones)
-# - Milestone 1/2/3/4/5 (choose the one the applies)
+# - Milestone 5
 #
 # Which approved additional features have been implemented?
 # (See the assignment handout for the list of additional features)
 # 1. Fancier graphics
-# 2. Boosting / Power ups
+# 2. Realistic physics
 # 3. Dynamic on-screen notifications
 #
 # Link to video demonstration for final submission:
@@ -28,7 +28,7 @@
 # Any additional information that the TA needs to know:
 # - Some luck is needed in the game due to random platform location spawns :)
 # - Press S to start from start screen
-# - Use p key for pause screen, s to start it up again
+# - Use P key for pause screen, S to start it up again
 # - both Doodle legs need to be on platform!!!
 #####################################################################
 
@@ -81,6 +81,7 @@ E:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1
 J:		.word	0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1
 L:		.word	1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1
 M:		.word	1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1
+N:		.word	1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1
 P:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0
 R:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1
 S:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1
@@ -425,7 +426,8 @@ doodleJumpDown:
 	jal keyCheck		# check for input while movement to continue
 	jal checkPlatforms
 	
-	bge $s5, 0x1000a000, endGame
+	jal printNo
+	bge $s5, 0x1000a500, endGame
 	
 	j doodleJumpDown	# continue down	
 
@@ -839,12 +841,35 @@ printWow:
 	la $s6, exclaim
 	jal drawCharactersInit
 
+noWow:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	
 	jr $ra
+	
+printNo:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	ble $s5, 0x10009ef0, noNo
+	
+	li $t9, 0x10008920	# draw wow
+	la $s6, N
+	jal drawCharactersInit
 
-noWow:
+	li $t9, 0x10008930
+	la $s6, zero	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008940
+	la $s6, zero
+	jal drawCharactersInit
+	
+	li $t9, 0x10008950
+	la $s6, exclaim
+	jal drawCharactersInit
+
+noNo:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	
