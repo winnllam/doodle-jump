@@ -45,6 +45,8 @@ jumpDelay:	.word	85
 backgroundColour:	.word	0xc2e6ec 	# blue
 doodleColour:		.word	0x745185 	# purple
 platformColour:		.word	0x74bea7	# green
+titleColour:		.word	0x35627C
+infoColour:		.word	0x8FBDD8
 white:			.word	0xffffff
 
 # Controls (ASCII numbers)
@@ -87,6 +89,8 @@ U:		.word	1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
 W:		.word	1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1
 Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
 exclaim:	.word	0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0
+smileLeft:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1
+smileRight:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1
 
 ### REGISTERS ###
 # $a2
@@ -117,6 +121,8 @@ main:
 startBackground:
 	jal backgroundFillInit
 	jal cloudFillInit
+	
+	lw $s1, titleColour
 	
 	li $t9, 0x10008510		# spell doodle
 	la $s6, D
@@ -157,6 +163,8 @@ startBackground:
 	li $t9, 0x10008950
 	la $s6, P
 	jal drawCharactersInit
+	
+	lw $s1, infoColour
 	
 	li $t9, 0x1000950c		# spell press s
 	la $s6, P
@@ -785,21 +793,33 @@ Exit:
 	jal backgroundFillInit
 	jal cloudFillInit
 	
-	li $t9, 0x10008520
+	lw $s1, titleColour
+	
+	li $t9, 0x10008920
 	la $s6, B
 	jal drawCharactersInit
 
-	li $t9, 0x10008530
+	li $t9, 0x10008930
 	la $s6, Y	
 	jal drawCharactersInit
 	
-	li $t9, 0x10008540
+	li $t9, 0x10008940
 	la $s6, E
 	jal drawCharactersInit
 	
-	li $t9, 0x10008550
+	li $t9, 0x10008950
 	la $s6, exclaim
 	jal drawCharactersInit
+	
+	li $t9, 0x10008f30
+	la $s6, smileLeft
+	jal drawCharactersInit
+	
+	li $t9, 0x10008f3c
+	la $s6, smileRight
+	jal drawCharactersInit
+	
+	jal drawScore
 	
 	li $v0, 10	# terminate the program gracefully
 	syscall
