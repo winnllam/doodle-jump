@@ -56,12 +56,8 @@ start:		.word 0x73	# s
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
-platformLength:	.word 	8	
-rocketLocation:	.space	8	# 4 for base location for collision, 4 for location of drawing
-springLocation:	.space 	8	
+platformLength:	.word 	8
 doodle:		.word 	0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0
-rocket:		.word	0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1
-spring:		.word	0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0
 cloud1:		.word	0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0
 cloud2:		.word	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
 cloud3:		.word	1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
@@ -411,7 +407,7 @@ doodleJumpDown:
 	sub $t1, $t1, 1
 	
 	li $v0, 32		# sleep to delay animation
-	add $a0, $zero, $s3
+	addi $a0, $s3, -15
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
@@ -622,8 +618,20 @@ continuePlatformShift:
 	
 platformShiftRight:	# draw the entire platform
 	sw $s0, 0($t8)		# colour into display
-	addi $t8, $t8, 4	# offset for rest of platform
+  	
+  	sub $s2, $s4, 1
+  	
+	beq $t7, 0, platformShiftRightCont
+	beq $t7, $s2, platformShiftRightCont
 	
+platformShiftBottom: # draw bottom part of platform (doesnt include first and last pixel)
+	addi $t8, $t8, 128
+	sw $s0, 0($t8)		# colour into display
+	sub $t8, $t8, 128
+
+platformShiftRightCont:
+	addi $t8, $t8, 4	# offset for rest of platform
+
 	addi $t7, $t7, 1	# increment platform length counter
 	bne $t7, $s4, platformShiftRight
 	
