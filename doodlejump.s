@@ -39,12 +39,12 @@ doodleStart: 		.word	0x10009dc0
 basePlatformRow:	.word	7552		# 0x10008e00 (3584)
 
 # Anmiation delay
-jumpDelay:	.word	85
+jumpDelay:	.word	90
 
 # Colours
-backgroundColour:	.word	0xc2e6ec 	# blue
-doodleColour:		.word	0x745185 	# purple
-platformColour:		.word	0x74bea7	# green
+backgroundColour:	.word	0xc2e6ec
+doodleColour:		.word	0x35427C
+platformColour:		.word	0xF2F2F2
 titleColour:		.word	0x35627C
 infoColour:		.word	0x8FBDD8
 white:			.word	0xffffff
@@ -98,10 +98,10 @@ smileRight:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1
 # $s0 - background colour
 # $s1 - doodle colour
 # $s2 - platform colour
-# $s3 - platform array
+# $s3 - jumping speed
 # $s4 - platform length
 # $s5 - doodle start
-# $s6 - 
+# $s6 -
 # $s7 - base platform
 # $k0, $k1 - keyboard inputs
 # $gp - display address
@@ -112,7 +112,7 @@ main:
 	lw $s0, backgroundColour
 	lw $s1, doodleColour
 	lw $s2, platformColour
-	la $s3, platforms
+	lw $s3, jumpDelay
 	lw $s4, platformLength
 	lw $s5, doodleStart
 	lw $s7, basePlatformRow
@@ -292,7 +292,8 @@ generateLocation:
 	add $a0, $a0, $t2 	# add section offset for platform
 	addi $t2, $t2, 256
 	
-	add $t6, $s3, $t1
+	la $t9, platforms
+	add $t6, $t9, $t1
 	addi $t1, $t1, 4	# update platform array offset
 
 	li $t5, 0 		# loop counter
@@ -317,7 +318,8 @@ drawPlatform:
 
 startingPlatformInit:
 	li $a1, 8120		# platform pixel location
-	addi $t6, $s3, 28
+	la $t6, platforms
+	addi $t6, $t6, 28
 	sw $a1, 0($t6)			# save to last spot in array	
 		
 	addi $t7, $s5, 504		# shift down and left 2 from doodle location (128 - 4 - 4 = 120)
@@ -378,8 +380,6 @@ doodleJumpInit:
 
 doodleJumpUp:
 	jal drawScore	# update the score after all the redrawing
-	jal printWow	# print on screen if score is multiple of 10
-	
 	jal clearDoodle
 	
 	sub $s5, $s5, 128	# up
@@ -389,7 +389,7 @@ doodleJumpUp:
 	addi $t1, $t1, 1
 	
 	li $v0, 32		# sleep to delay animation
-	lw $a0, jumpDelay
+	add $a0, $zero, $s3
 	syscall
 	
 	jal keyCheck
@@ -407,7 +407,7 @@ doodleJumpDown:
 	sub $t1, $t1, 1
 	
 	li $v0, 32		# sleep to delay animation
-	lw $a0, jumpDelay
+	add $a0, $zero, $s3
 	syscall
 	
 	jal keyCheck		# check for input while movement to continue
@@ -514,7 +514,7 @@ checkPlatforms:
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)		# add pointer to jump up to stack
 
-	add $t4, $s3, $zero	# load platform location
+	la $t4, platforms	# load platform location
 	li $t2, 0		# initialize platform counter
 
 	jal checkOnPlatformInit
@@ -559,12 +559,10 @@ notSamePlatform:
 	add $t0, $s0, $zero	# save background colour	
 
 endPlatformCheck:
-	li $t1, 0		# reset jump counter
-	j doodleJumpUp
+	j doodleJumpInit
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4	# load pointer back to checkPlatform
-	
 	jr $ra
 
 noPlatform:	
@@ -581,8 +579,8 @@ backdropShift:
 	addi $t2, $t2, 1
 	bne $t2, 2048, backdropShift	# 2048
 
-platformShiftInit:	
-	add $t4, $s3, $zero 	# load platform array
+platformShiftInit:
+	la $t4, platforms	# load platform array
 	li $t5, 0		# initialize platform counter
 	
 platformShiftDown:	# shift platforms down and store
@@ -590,8 +588,6 @@ platformShiftDown:	# shift platforms down and store
 	addi $t6, $t6, 128	# shift down
 	
 	ble $t6, 8192, continuePlatformShift	# skip generation of new top platform
-	
-	addi $a3, $a3, 1 	# add to the score (platform reached EOL)
 	
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
@@ -626,6 +622,16 @@ platformShiftRight:	# draw the entire platform
 	
 	sub $t9, $s5, $gp	# get number value of doodle
 	blt $t9, $s7, backdropShiftInit		# before the row, shift down more
+	
+	addi $a3, $a3, 1 	# add to the score (platform reached EOL)
+	
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	jal printWow
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
 	
 	jr $ra
 
@@ -674,13 +680,13 @@ drawFirstDigit:
 	div $a3, $t9
 	mflo $v1	# first digit
 	
-	addi $t9, $gp, 0
+	addi $t9, $gp, 132
 	
 	j checkNumber
 
 drawSecondDigit:
 	mfhi $v1	# second digit
-	addi $t9, $gp, 16
+	addi $t9, $gp, 148
 
 	j checkNumber
 
@@ -749,6 +755,8 @@ endScoreUpdate:
 	
 	jr $ra
 
+### 
+
 ### Print WOW! ###
 printWow:
 	addi $sp, $sp, -4 	
@@ -761,6 +769,8 @@ printWow:
 	mfhi $v1
 	
 	bne $v1, 0, noWow	# no wow if not multiple of 10
+	
+	sub $s3, $s3, 5 	# update jump speed
 
 	li $t9, 0x10008520	# draw wow
 	la $s6, W
