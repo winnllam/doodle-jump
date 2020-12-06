@@ -425,7 +425,7 @@ doodleJumpDown:
 	jal keyCheck		# check for input while movement to continue
 	jal checkPlatforms
 	
-	bge $s5, 0x1000a000, Exit
+	bge $s5, 0x1000a000, endGame
 	
 	j doodleJumpDown	# continue down	
 
@@ -850,7 +850,7 @@ noWow:
 	
 	jr $ra
 
-Exit:
+endGame:
 	jal backgroundFillInit
 	jal cloudFillInit
 	
@@ -882,5 +882,21 @@ Exit:
 	
 	jal drawScore
 	
+	li $k0, 0
+	
+restartCheck:
+	li $v0, 32		# sleep
+	li $a0, 100
+	syscall
+	
+	lw $k0, 0xffff0000
+	beq $k0, 0, restartCheck
+	
+	lw $k0, 0xffff0004
+	bne $k0, 0x73, restartCheck	# s for restart
+	
+	j main
+
+Exit:	
 	li $v0, 10	# terminate the program gracefully
 	syscall
