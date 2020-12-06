@@ -27,7 +27,8 @@
 #
 # Any additional information that the TA needs to know:
 # - some luck is needed in the game due to random platform location spawns :)
-#
+# - Press S to start from start screen
+# - both Doodle legs need to be on platform!!!
 #####################################################################
 
 .data
@@ -54,6 +55,10 @@ start:		.word 0x73	# s
 platforms:	.space 	32	# 4 byte * 8 platforms
 platformLength:	.word 	8
 doodle:		.word 	0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0
+cloud1:		.word	0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0
+cloud2:		.word	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+cloud3:		.word	1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+cloud4:		.word	0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0
 
 # Letters and numbers
 zero: 		.word	1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
@@ -68,10 +73,16 @@ eight:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1
 nine:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1
 A:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1
 B: 		.word	1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1
+D:		.word	1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0
 E:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1
+J:		.word	0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1
+L:		.word	1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1
+M:		.word	1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1
+P:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0
 R:		.word	1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1
 S:		.word	1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1
 T:		.word	1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0
+U:		.word	1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1
 W:		.word	1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1
 Y:		.word	1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0
 exclaim:	.word	0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0
@@ -101,16 +112,161 @@ main:
 	lw $s5, doodleStart
 	lw $s7, basePlatformRow
 
+### Start screen ###
+startBackground:
+	jal backgroundFillInit
+	jal cloudFillInit
+	
+	li $t9, 0x10008510		# spell doodle
+	la $s6, D
+	jal drawCharactersInit
+
+	li $t9, 0x10008520
+	la $s6, zero	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008530
+	la $s6, zero
+	jal drawCharactersInit
+	
+	li $t9, 0x10008540
+	la $s6, D
+	jal drawCharactersInit
+	
+	li $t9, 0x10008550
+	la $s6, L
+	jal drawCharactersInit
+	
+	li $t9, 0x10008560
+	la $s6, E
+	jal drawCharactersInit
+	
+	li $t9, 0x10008920		# spell jump
+	la $s6, J
+	jal drawCharactersInit
+	
+	li $t9, 0x10008930
+	la $s6, U
+	jal drawCharactersInit
+	
+	li $t9, 0x10008940
+	la $s6, M
+	jal drawCharactersInit
+	
+	li $t9, 0x10008950
+	la $s6, P
+	jal drawCharactersInit
+	
+	li $t9, 0x1000950c		# spell press s
+	la $s6, P
+	jal drawCharactersInit
+
+	li $t9, 0x1000951c
+	la $s6, R	
+	jal drawCharactersInit
+	
+	li $t9, 0x1000952c
+	la $s6, E
+	jal drawCharactersInit
+	
+	li $t9, 0x1000953c
+	la $s6, S
+	jal drawCharactersInit
+	
+	li $t9, 0x1000954c
+	la $s6, S
+	jal drawCharactersInit
+	
+	li $t9, 0x10009568
+	la $s6, S
+	jal drawCharactersInit
+	
+startKeyCheck:
+	li $v0, 32		# sleep
+	li $a0, 100
+	syscall
+	
+	lw $k0, 0xffff0000
+	beq $k0, 0, startKeyCheck
+	
+	lw $k1, 0xffff0004		# s is clicked, start game
+	bne $k1, 0x73, startKeyCheck
+	
+	j background
+
+### Draw clouds ###
+cloudFillInit:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	
+	li $t0, 0		# counter for 8 clouds
+	li $t1, 0		# counter for sections
+	lw $s1, white
+	
+generateCloud:
+	li $v0, 42		# RNG for cloud locations
+	li $a0, 0		# number stored into $a0
+	li $a1, 256		# 2048/4
+	syscall
+	
+	add $a0, $a0, $t1
+	addi $t1, $t1, 256
+	
+	li $t4, 4		# multiplier
+	mult $t4, $a0		# RNG * 4 (so multiple of 4)
+	mflo $a1
+	
+cloudFill:	
+	add $t9, $gp, $a1
+	la $s6, cloud1
+	jal drawCharactersInit
+	
+	addi $a1, $a1, 12
+	add $t9, $gp, $a1
+	la $s6, cloud2
+	jal drawCharactersInit
+	
+	addi $a1, $a1, 12
+	add $t9, $gp, $a1
+	la $s6, cloud3
+	jal drawCharactersInit
+	
+	addi $a1, $a1, 12
+	add $t9, $gp, $a1
+	la $s6, cloud4
+	jal drawCharactersInit
+	
+	addi $t0, $t0, 1
+	bne $t0, 8, generateCloud
+	
+	lw $s1, doodleColour
+	
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
 ### Fill background ###
+background:
+	jal backgroundFillInit
+	j initPlatforms
+
 backgroundFillInit:
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+
 	li $t0, 0 		# loop counter
 	add $t1, $gp, $zero
 	
 backgroundFill:
 	sw $s0, 0($t1) 		# save background colour at location
 	add $t1, $t1, 4 	# increment to next pixel
+	
 	addi $t0, $t0, 1
 	bne $t0, 2048, backgroundFill	# 2048 pixels
+	
+	addi $sp, $sp, -4 	
+	sw $ra, 0($sp)
+	jr $ra
 
 ### Draw platforms ###
 initPlatforms:
@@ -203,17 +359,6 @@ drawStartingDoodle:
 	
 	li $a3, 0
 	jal drawScore	# draw initial score of 0		
-
-startKeyCheck:
-	li $v0, 32		# sleep
-	li $a0, 100
-	syscall
-	
-	lw $k0, 0xffff0000
-	beq $k0, 0, startKeyCheck
-	
-	lw $k1, 0xffff0004		# s is clicked, start game
-	bne $k1, 0x73, startKeyCheck
 
 ### INITIALIZATION END ###
 
