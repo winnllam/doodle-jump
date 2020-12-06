@@ -36,7 +36,7 @@
 
 # Display locations
 doodleStart: 		.word	0x10009dc0
-basePlatformRow:	.word	7552		# 0x10008e00 (3584)
+basePlatformRow:	.word	7552
 
 # Anmiation delay
 jumpDelay:	.word	90
@@ -56,8 +56,12 @@ start:		.word 0x73	# s
 
 # Objects
 platforms:	.space 	32	# 4 byte * 8 platforms
-platformLength:	.word 	8
+platformLength:	.word 	8	
+rocketLocation:	.space	8	# 4 for base location for collision, 4 for location of drawing
+springLocation:	.space 	8	
 doodle:		.word 	0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0
+rocket:		.word	0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1
+spring:		.word	0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0
 cloud1:		.word	0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0
 cloud2:		.word	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
 cloud3:		.word	1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
@@ -95,13 +99,13 @@ smileRight:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1
 ### REGISTERS ###
 # $a2 - score counter
 # $a3 - score
-# $s0 - background colour
-# $s1 - doodle colour
-# $s2 - platform colour
+# $s0 - colour swatcher
+# $s1 -
+# $s2 - 
 # $s3 - jumping speed
 # $s4 - platform length
 # $s5 - doodle start
-# $s6 -
+# $s6 -	location address for characters
 # $s7 - base platform
 # $k0, $k1 - keyboard inputs
 # $gp - display address
@@ -110,8 +114,6 @@ smileRight:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1
 .text
 main:
 	lw $s0, backgroundColour
-	lw $s1, doodleColour
-	lw $s2, platformColour
 	lw $s3, jumpDelay
 	lw $s4, platformLength
 	lw $s5, doodleStart
@@ -122,7 +124,7 @@ startBackground:
 	jal backgroundFillInit
 	jal cloudFillInit
 	
-	lw $s1, titleColour
+	lw $s0, titleColour
 	
 	li $t9, 0x10008510		# spell doodle
 	la $s6, D
@@ -164,7 +166,7 @@ startBackground:
 	la $s6, P
 	jal drawCharactersInit
 	
-	lw $s1, infoColour
+	lw $s0, infoColour
 	
 	li $t9, 0x1000950c		# spell press s
 	la $s6, P
@@ -210,7 +212,7 @@ cloudFillInit:
 	
 	li $t0, 0		# counter for 8 clouds
 	li $t1, 0		# counter for sections
-	lw $s1, white
+	lw $s0, white
 	
 generateCloud:
 	li $v0, 42		# RNG for cloud locations
@@ -248,7 +250,7 @@ cloudFill:
 	addi $t0, $t0, 1
 	bne $t0, 8, generateCloud
 	
-	lw $s1, doodleColour
+	lw $s0, backgroundColour
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -265,6 +267,7 @@ backgroundFillInit:
 
 	li $t0, 0 		# loop counter
 	add $t1, $gp, $zero
+	lw $s0, backgroundColour
 	
 backgroundFill:
 	sw $s0, 0($t1) 		# save background colour at location
@@ -282,6 +285,7 @@ initPlatforms:
 	li $t0, 0		# counter for # of platforms
 	li $t1, 0		# offset shifts for platform array
 	li $t2, 0		# partition for platform locations
+	lw $s0, platformColour
 
 generateLocation:
 	li $v0, 42		# RNG for platform locations
@@ -308,7 +312,7 @@ loadPlatformAddress:
 	add $t8, $gp, $a1	# load rng location
 
 drawPlatform:
-	sw $s2, 0($t8) 			# save platform colour at location
+	sw $s0, 0($t8) 			# save platform colour at location
 	add $t8, $t8, 4 		# increment to next pixel horizontal
 	addi $t5, $t5, 1
 	bne $t5, $s4, drawPlatform	# platform length is 5
@@ -326,7 +330,7 @@ startingPlatformInit:
 	li $t5, 0
 	
 drawStartingPlatform:		
-	sw $s2, 0($t7)			# 8th platform initialized to below doodle
+	sw $s0, 0($t7)			# 8th platform initialized to below doodle
 	addi $t5, $t5, 1
 	addi $t7, $t7, 4
 	bne $t5, $s4, drawStartingPlatform
@@ -337,6 +341,8 @@ drawStartingPlatform:
 drawDoodle:	#t9 for position
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)		# add pointer to jump up to stack
+	
+	lw $s0, doodleColour
 
 	add $t9, $zero, $s5
 	la $s6, doodle	
@@ -352,13 +358,11 @@ clearDoodle:
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)
 	
-	lw $s1, backgroundColour
+	lw $s0, backgroundColour
 	
 	add $t9, $zero, $s5
 	la $s6, doodle	
 	jal drawCharactersInit
-	
-	lw $s1, doodleColour
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -419,6 +423,8 @@ doodleJumpDown:
 
 ### Pause game ###
 pause:
+	lw $s0, doodleColour
+
 	li $t9, 0x10008518		# spell doodle
 	la $s6, P
 	jal drawCharactersInit
@@ -502,6 +508,7 @@ moveDoodle:	# colour saving and loading
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)
 	
+	lw $s0, doodleColour
 	jal drawDoodle
 	
 	lw $ra, 0($sp)
@@ -573,6 +580,8 @@ backdropShiftInit: # recolour the background
 	li $t2, 0 		# loop counter
 	add $t3, $gp, $zero	# base address for display
 	
+	lw $s0, backgroundColour
+	
 backdropShift:
 	sw $s0, 0($t3) 		# save background colour at location
 	add $t3, $t3, 4 	# increment to next pixel
@@ -609,9 +618,10 @@ continuePlatformShift:
 	add $t8, $gp, $t6
 	
 	li $t7, 0		# initialize platform length counter
+	lw $s0, platformColour
 	
 platformShiftRight:	# draw the entire platform
-	sw $s2, 0($t8)		# colour into display
+	sw $s0, 0($t8)		# colour into display
 	addi $t8, $t8, 4	# offset for rest of platform
 	
 	addi $t7, $t7, 1	# increment platform length counter
@@ -656,7 +666,7 @@ drawCharacterRow:
 	j charIncrement
 	
 savePixel:
-	sw $s1, 0($t9)			# draw if not 0
+	sw $s0, 0($t9)			# draw if not 0
 	bne $t7, 3, charIncrement	# do it again if not end of row
 
 charNextRow:
@@ -676,7 +686,8 @@ drawScore:
 	
 	li $k1, 0
 	li $t9, 10
-			
+	lw $s0, doodleColour
+		
 drawFirstDigit:	
 	div $a3, $t9
 	mflo $v1	# first digit
@@ -790,6 +801,8 @@ printWow:
 	
 	sub $s3, $s3, 5 	# update jump speed
 
+	lw $s0, doodleColour
+
 	li $t9, 0x10008520	# draw wow
 	la $s6, W
 	jal drawCharactersInit
@@ -821,7 +834,7 @@ Exit:
 	jal backgroundFillInit
 	jal cloudFillInit
 	
-	lw $s1, titleColour
+	lw $s0, titleColour
 	
 	li $t9, 0x10008920
 	la $s6, B
