@@ -893,8 +893,9 @@ restartCheck:
 	beq $k0, 0, restartCheck
 	
 	lw $k0, 0xffff0004
+	beq $k0, 0x65, Exit	# e for exit
 	bne $k0, 0x73, restartCheck	# s for restart
-	
+		
 	j main
 
 Exit:	
