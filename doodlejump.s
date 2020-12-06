@@ -309,6 +309,18 @@ loadPlatformAddress:
 
 drawPlatform:
 	sw $s0, 0($t8) 			# save platform colour at location
+	
+	sub $s2, $s4, 1
+	
+	beq $t5, 0, drawPlatformCont
+	beq $t5, $s2, drawPlatformCont
+
+drawPlatformBottom: # draw bottom part of platform (doesnt include first and last pixel)
+	addi $t8, $t8, 128
+	sw $s0, 0($t8)		# colour into display
+	sub $t8, $t8, 128
+
+drawPlatformCont:
 	add $t8, $t8, 4 		# increment to next pixel horizontal
 	addi $t5, $t5, 1
 	bne $t5, $s4, drawPlatform	# platform length is 5
