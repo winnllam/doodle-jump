@@ -26,8 +26,9 @@
 # - (insert YouTube / MyMedia / other URL here). 
 #
 # Any additional information that the TA needs to know:
-# - some luck is needed in the game due to random platform location spawns :)
+# - Some luck is needed in the game due to random platform location spawns :)
 # - Press S to start from start screen
+# - Use p key for pause screen, s to start it up again
 # - both Doodle legs need to be on platform!!!
 #####################################################################
 
@@ -361,7 +362,7 @@ drawStartingDoodle:
 	jal drawScore	# draw initial score of 0		
 
 ### INITIALIZATION END ###
-
+	
 ### Move Doodle ###
 doodleJumpInit:
 	li $t1, 0		# counter for distance up and down
@@ -408,6 +409,41 @@ doodleJumpDown:
 	
 	j doodleJumpDown	# continue down	
 
+### Pause game ###
+pause:
+	li $t9, 0x10008518		# spell doodle
+	la $s6, P
+	jal drawCharactersInit
+
+	li $t9, 0x10008528
+	la $s6, A	
+	jal drawCharactersInit
+	
+	li $t9, 0x10008538
+	la $s6, U
+	jal drawCharactersInit
+	
+	li $t9, 0x10008548
+	la $s6, S
+	jal drawCharactersInit
+	
+	li $t9, 0x10008558
+	la $s6, E
+	jal drawCharactersInit
+	
+	j pauseWait
+
+pauseWait:
+	li $v0, 32		# sleep
+	li $a0, 100
+	syscall
+	
+	lw $k1, 0xffff0004		
+	bne $k1, 0x73, pauseWait	# s is clicked, unpause game
+
+	j doodleJumpInit
+
+### Check for input ###
 keyCheck:
 	lw $k0, 0xffff0000
 	beq $k0, 1, movementKeyPress
@@ -417,6 +453,7 @@ keyCheck:
 movementKeyPress:
 	lw $k0, 0xffff0004
 	beq $k0, 0x73, main	# s for restart
+	beq $k0, 0x70, pause	# p for pause
 	
 	beq $k0, 0x6A, moveDoodleLeft	# j
 	beq $k0, 0x6B, moveDoodleRight	# k
@@ -745,6 +782,9 @@ noWow:
 	jr $ra
 
 Exit:
+	jal backgroundFillInit
+	jal cloudFillInit
+	
 	li $t9, 0x10008520
 	la $s6, B
 	jal drawCharactersInit
