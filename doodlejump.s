@@ -93,7 +93,7 @@ smileLeft:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1
 smileRight:	.word	0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1
 
 ### REGISTERS ###
-# $a2
+# $a2 - score counter
 # $a3 - score
 # $s0 - background colour
 # $s1 - doodle colour
@@ -535,7 +535,7 @@ checkOnPlatform:
 	addi $t3, $t3, 4
 	
 	addi $t5, $t5, 1		# platform length counter
-	bne $t5, 8, checkOnPlatform	
+	bne $t5, $s4, checkOnPlatform	
 	
 	addi $t4, $t4, 4	# increment offset
 	addi $t2, $t2, 1	# incrememnt platform counter
@@ -589,6 +589,8 @@ platformShiftDown:	# shift platforms down and store
 	
 	ble $t6, 8192, continuePlatformShift	# skip generation of new top platform
 	
+	addi $a3, $a3, 1 	# add to the score (platform reached EOL)
+	
 	li $v0, 42		# RNG for platform locations
 	li $a0, 0		# number stored into $a0
 	li $a1, 256		# 2048/8 = 256
@@ -613,7 +615,7 @@ platformShiftRight:	# draw the entire platform
 	addi $t8, $t8, 4	# offset for rest of platform
 	
 	addi $t7, $t7, 1	# increment platform length counter
-	bne $t7, 8, platformShiftRight
+	bne $t7, $s4, platformShiftRight
 	
 	addi $t5, $t5, 1		# increment platform counter
 	bne $t5, 8, platformShiftDown	# 8 platforms at a time
@@ -623,12 +625,11 @@ platformShiftRight:	# draw the entire platform
 	sub $t9, $s5, $gp	# get number value of doodle
 	blt $t9, $s7, backdropShiftInit		# before the row, shift down more
 	
-	addi $a3, $a3, 1 	# add to the score (platform reached EOL)
-	
 	addi $sp, $sp, -4 	
 	sw $ra, 0($sp)
 	
 	jal printWow
+	jal shortenPlatformInit
 	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -755,8 +756,25 @@ endScoreUpdate:
 	
 	jr $ra
 
-### 
-
+### Platform shortener ###
+shortenPlatformInit:
+	li $t9, 10
+	div $a3, $t9
+	mflo $v1	# grab first digit
+	
+	beq $v1, 0, noShorten	# starts with 0
+	
+	andi $t9, $v1, 1
+	bne $t9, $zero, noShorten
+	
+	beq $a2, $v0, noShorten		# if multiple of 20 already subbed
+	add $a2, $zero, $v0
+	
+	sub $s4, $s4, 1
+	
+noShorten:
+	jr $ra
+	
 ### Print WOW! ###
 printWow:
 	addi $sp, $sp, -4 	
