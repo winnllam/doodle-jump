@@ -23,12 +23,13 @@
 # 3. Dynamic on-screen notifications
 #
 # Link to video demonstration for final submission:
-# - (insert YouTube / MyMedia / other URL here). 
+# - https://play.library.utoronto.ca/play/684a642e48a9f347499cf6a1a0c3d6ff
 #
 # Any additional information that the TA needs to know:
 # - Some luck is needed in the game due to random platform location spawns :)
 # - Press S to start from start screen
 # - Use P key for pause screen, S to start it up again
+# - Use E on the BYE screen to exit the program, S to go back to title screen
 # - both Doodle legs need to be on platform!!!
 #####################################################################
 
